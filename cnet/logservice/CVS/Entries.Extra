@@ -1,0 +1,13 @@
+/Makefile////*////
+/logdispatch.cpp////*////
+/logdispatch.h////*////
+/logservice.conf////*////
+/logservice.cpp////*////
+/logserviceserver.cpp////*////
+/logserviceserver.hpp////*////
+/logservicetcpserver.cpp////*////
+/logservicetcpserver.hpp////*////
+/remotelog.hpp////*////
+/remotelogvital.hpp////*////
+/statinfo.hpp////*////
+/statinfovital.hpp////*////

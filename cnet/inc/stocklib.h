@@ -1,0 +1,1 @@
+../gamed/stocklib.h

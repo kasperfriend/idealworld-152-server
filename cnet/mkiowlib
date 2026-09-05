@@ -1,0 +1,24 @@
+mkdir iowlib
+cd iowlib
+ln -s  ../storage/libdb.a
+ln -s ../gdbclient/libdbCli.a
+ln -s ../io/libgsio.a
+ln -s ../gamed/libgsPro2.a
+ln -s ../logclient/liblogCli.a
+ln -s ../shm/libshmmgr.a
+mkdir inc
+cd inc
+ln -s ../../gamed/auctionsyslib.h
+ln -s ../../gamed/callid.hxx
+ln -s ../../gdbclient/db_if.h
+ln -s ../../gamed/factionlib.h
+ln -s ../../common/glog.h
+ln -s ../../gamed/gsp_if.h
+ln -s ../../gamed/mailsyslib.h
+ln -s ../../gamed/privilege.hxx
+ln -s ../../shm/ptmalloc.h
+ln -s ../../gamed/sellpointlib.h
+ln -s ../../gamed/stocklib.h
+ln -s ../../gamed/webtradesyslib.h
+ln -s ../../common/octets.h 
+ln -s ../../gdbclient/getroledetail.h

@@ -1,0 +1,22 @@
+/Makefile/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/accountingrequest.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/accountingresponse.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/announcezoneid.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/fee.h/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/gauthd.conf/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/gauthd.cpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/gauthserver.cpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/gauthserver.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/gmkickoutuser.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/gmshutup.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/gquerypasswd.hrp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/keyexchange.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/kickoutuser.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/queryuserforbid.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/queryuserforbid_re.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/queryuserprivilege.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/queryuserprivilege_re.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/statusannounce.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/transbuypoint.hpp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+/userlogin.hrp/1.1.1.1/Wed Apr 18 07:37:57 2012//Trelease_20150316
+D

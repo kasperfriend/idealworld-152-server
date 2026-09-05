@@ -1,0 +1,33 @@
+chmod +x rpcgen 
+chmod +x rpc/xmlcoder.pl
+chmod +x gamedbd/dbtypesgen.pl
+chmod +x gamedbd/dbdetachgen.pl 
+chmod +x gqueryd/can_auction_gen.sh 
+chmod +x mkiowlib
+ln -s ../wgame/libcommon.a gqueryd/include/libcommon.a
+./rpcgen
+cd gamedbd
+make -j4
+cd ../gdeliveryd/
+make -j4
+cd ../glinkd/
+make -j4
+cd ../gqueryd
+make -j4
+cd ../logclient
+make clean
+make -f Makefile.gs
+cd ../gamed
+make -j4
+cd ../gdbclient
+make -j4
+## cd ..
+./mkiowlib
+cd storage
+make lib
+cd ../io
+make lib
+cd shm
+make
+
+

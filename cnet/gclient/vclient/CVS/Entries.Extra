@@ -1,0 +1,17 @@
+/Makefile////*////
+/config.h////*////
+/moveagent.cpp////*////
+/moveagent.h////*////
+/msg.h////*////
+/msgmanager.cpp////*////
+/msgmanager.h////*////
+/player.cpp////*////
+/player.h////*////
+/playermanager.cpp////*////
+/playermanager.h////*////
+/task.cpp////*////
+/task.h////*////
+/templatedataman.cpp////*////
+/templatedataman.h////*////
+/virtualclient.cpp////*////
+/virtualclient.h////*////

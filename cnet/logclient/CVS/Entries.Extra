@@ -1,0 +1,17 @@
+/Makefile////*////
+/Makefile.gamedbd////*////
+/Makefile.gs////*////
+/Makefile.single.gcc////*////
+/Makefile.single.icpc////*////
+/glog.cpp////*////
+/log.cpp////*////
+/logclient.conf////*////
+/logclient.cpp////*////
+/logclientclient.cpp////*////
+/logclientclient.hpp////*////
+/logclienttcpclient.cpp////*////
+/logclienttcpclient.hpp////*////
+/remotelog.hpp////*////
+/remotelogvital.hpp////*////
+/statinfo.hpp////*////
+/statinfovital.hpp////*////
