@@ -19,7 +19,7 @@ class AccountingRequest : public GNET::Protocol
 	bool need_response;
 	bool VerifyAuth()
 	{
-		return (MD5Hash(MD5HASH).Digest(OctetsStream()<<stamp<<userid<<attributes.size()<<GAuthServer::GetInstance()->shared_key) == authenticator);
+		return (MD5Hash(MD5HASH).Digest(OctetsStream()<<stamp<<userid<<(unsigned int)attributes.size()<<GAuthServer::GetInstance()->shared_key) == authenticator);
 	}
 	bool SendResponse(Manager::Session::ID sid)
 	{
