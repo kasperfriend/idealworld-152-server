@@ -9,5 +9,9 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+/* The game owns `struct MSG` (cgame/common/message.h); winuser.h must not
+ * claim that name.  winposix.h does the same dance; both nest safely. */
+#define MSG WP_WinMSG
 #include_next <windows.h>
+#undef MSG
 #endif

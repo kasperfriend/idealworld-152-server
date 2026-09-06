@@ -2,6 +2,7 @@
 #define TASKPROCESS_H_
 
 #include "TaskInterface.h"
+#include <stdint.h>
 
 extern unsigned long g_ulNewCount;
 extern unsigned long g_ulDelCount;
@@ -109,7 +110,7 @@ class ATaskTempl;
 #define		TASK_STATE_AWARD_NOTIFY_TEAM	0x10	// 是否已把奖励通知队员
 #define		TASK_STATE_CONTRIBUTION_FINISH	0x20	// 是否用贡献度完成
 
-// Cur Size 21 bytes
+// Cur Size 21 bytes on ILP32, 33 on LP64/LLP64 (time/addresses are 64-bit there)
 struct TASK_ENTRY_FIXED_DATA
 {
 	unsigned short		m_ID;				// ID
@@ -118,10 +119,10 @@ struct TASK_ENTRY_FIXED_DATA
 	unsigned char		m_NextSblIndex;		// 兄弟节点索引
 	unsigned char		m_ChildIndex;		// 子节点索引
 	unsigned char		m_uState;			// 任务状态
-	unsigned long		m_ulTaskTime;		// 时间标记
+	uint64_t		m_ulTaskTime;		// 时间标记
 	unsigned short		m_uCapTaskId;		// 队长任务
-	unsigned long		m_ulTemplAddr;		// 模板地址
-	unsigned long		m_ulCapTemplAddr;	// 队长任务地址
+	uintptr_t		m_ulTemplAddr;		// 模板地址
+	uintptr_t		m_ulCapTemplAddr;	// 队长任务地址
 };
 
  // 大小为TASK_DATA_BUF_MAX_LEN

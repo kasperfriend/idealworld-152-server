@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 /* --- threads -------------------------------------------------------- */
-typedef struct { HANDLE h; DWORD tid; } pthread_t;
+typedef struct { DWORD tid; HANDLE ev; } pthread_t;
 typedef int pthread_attr_t; /* opaque; call sites always pass NULL */
 
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr,

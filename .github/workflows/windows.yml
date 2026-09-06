@@ -168,6 +168,7 @@ jobs:
               echo "### $log"
               echo '```'
               grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | sort -u | head -n 25
+              grep -E "note: in instantiation|required from here|In file included from" "$log" 2>/dev/null | sort -u | head -n 12
               echo '```'
               echo ""
             done
@@ -311,6 +312,7 @@ jobs:
               echo "### $log"
               echo '```'
               grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | sort -u | head -n 25
+              grep -E "note: in instantiation|required from here|In file included from" "$log" 2>/dev/null | sort -u | head -n 12
               echo '```'
               echo ""
             done

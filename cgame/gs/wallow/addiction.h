@@ -4,6 +4,13 @@
 #include <time.h>
 #include <string>
 
+/* NOTE (Windows): the SDK (via winposix.h) defines S_NORMAL as a macro,
+ * which collides with Addiction::S_NORMAL below.  Nothing in this tree
+ * uses the SDK meaning, so drop the macro here. */
+#ifdef S_NORMAL
+#undef S_NORMAL
+#endif
+
 namespace Addiction
 {
 	enum OnlineState 

@@ -1,5 +1,14 @@
-#ifndef __CM_LIB_ASSERT_H__
-#define __CM_LIB_ASSERT_H__
+/* NOTE (Windows): this file is named ASSERT.h and lives on a compiler
+ * -I path, so on case-insensitive filesystems `#include <assert.h>`
+ * resolves HERE instead of the CRT's assert.h.  Chain to the real one
+ * so lowercase assert() keeps working; each copy has a unique guard
+ * so the whole chain runs exactly once per translation unit. */
+#ifdef __GNUC__
+#include_next <assert.h>
+#endif
+
+#ifndef __CM_LIB_ASSERT_H_CNET__
+#define __CM_LIB_ASSERT_H_CNET__
 
 #ifdef __cplusplus
 extern "C"

@@ -2155,7 +2155,7 @@ inline void ATaskTempl::NotifyClient(
 	const ActiveTaskEntry* pEntry,
 	unsigned char uReason,
 	unsigned long ulCurTime,
-	unsigned long ulParam,
+	uintptr_t ulParam,
 	int dps,
 	int dph) const
 {
@@ -2195,7 +2195,7 @@ inline void ATaskTempl::NotifyClient(
 	case TASK_SVR_NOTIFY_NEW:
 		static_cast<svr_new_task*>(pNotify)->set_data(
 			ulCurTime,
-			reinterpret_cast<unsigned long>(pEntry),
+			reinterpret_cast<uintptr_t>(pEntry),
 			*(reinterpret_cast<const task_sub_tags*>(ulParam))
 			);
 		sz = static_cast<svr_new_task*>(pNotify)->get_size();
@@ -2237,7 +2237,7 @@ inline void TaskNotifyPlayer(
 	unsigned long ulPlayerId,
 	unsigned long ulTaskId,
 	unsigned char uReason,
-	unsigned long ulParam = 0)
+	uintptr_t ulParam = 0)
 {
 	task_player_notify notify;
 	notify.reason = uReason;

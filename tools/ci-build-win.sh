@@ -101,10 +101,28 @@ exec "$ZIG" c++ -target x86_64-windows-gnu -D__MINGW_FORTIFY_LEVEL=0 \
 	-lws2_32 -lbcrypt -lpsapi
 EOF
 	chmod +x "$TC/cc" "$TC/cxx" "$TC/ld"
+	# cskill/Makefilelib hardcodes -finput-charset/-fexec-charset=ISO-8859-1
+	# (GBK bytes, byte-preserving).  zig's driver rejects that value, so
+	# rewrite it to UTF-8: the cskill-u8 step has already escaped every
+	# high byte as \xNN, so UTF-8 in/out preserves bytes exactly.
+	cat > "$TC/cxx_ncs" <<EOF
+#!/usr/bin/env bash
+args=()
+for a in "\$@"; do
+	case "\$a" in
+	-finput-charset=ISO-8859-1) args+=("-finput-charset=UTF-8");;
+	-fexec-charset=ISO-8859-1) args+=("-fexec-charset=UTF-8");;
+	*) args+=("\$a");;
+	esac
+done
+exec "$TC/cxx" "\${args[@]}"
+EOF
+	chmod +x "$TC/cxx_ncs"
 	# cskill passes -finput-charset/-fexec-charset=ISO-8859-1 (GBK bytes);
-	# clang accepts these like gcc does, so no filtering is needed.
+	# zig's driver rejects that value, so CSKCC (cxx_ncs above) rewrites it
+	# to UTF-8 (the cskill-u8 step pre-escapes every high byte).
 	WP_CC="$TC/cxx"; WP_CXX="$TC/cxx"; WP_LD="$TC/ld"
-	CSKCC="$TC/cxx"
+	CSKCC="$TC/cxx_ncs"
 	WP_AR="ar"
 	WP_CCBIN="$TC/cc"
 	# avoid linking pcre/openssl when they are not available
@@ -149,7 +167,8 @@ NETINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cnet -I$ROOT/cnet/inc -I$ROOT/cnet/include \
  -I$ROOT/cnet/gfaction -I$ROOT/cnet/gfaction/operations -I$ROOT/cnet/gauthd \
  -I$ROOT/cnet/glinkd -I$ROOT/cnet/uniquenamed -I$ROOT/cnet/logservice \
  -I$ROOT/cnet/log_inl \
- -I$ROOT/cnet/gdbclient -I$ROOT/cskill -I$ROOT/cskill/header/include"
+ -I$ROOT/cnet/gdbclient -I$ROOT/cskill -I$ROOT/cskill/header/include \
+ -I$ROOT/cnet/gfaction/operations"
 
 GAMEINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cgame/include -I$ROOT/cgame \
  -I$ROOT/cgame/common -I$ROOT/cgame/io -I$ROOT/cgame/collision \
@@ -161,12 +180,26 @@ GAMEINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cgame/include -I$ROOT/cgame \
 
 # Linux Makefiles append these with `+=`, which command-line overrides
 # discard, so the driver re-applies them.
-D_NET="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE -D__MINGW_FORTIFY_LEVEL=0"
-D_GAME="-DWIN32 -D_DEBUG -D__THREAD_SPIN_LOCK__ -D__MINGW_FORTIFY_LEVEL=0"
+D_NET='-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE -D__MINGW_FORTIFY_LEVEL=0 -D__USER__=\\\"WinBuild\\\"'
+D_GAME='-DWIN32 -D_DEBUG -D__THREAD_SPIN_LOCK__ -D__MINGW_FORTIFY_LEVEL=0 -D__USER__=\\\"WinBuild\\\"'
 D_LOGC="-DUSE_LOGCLIENT"
 D_WDB="-DUSE_WDB -DMPPC_4WAY -DUSE_TRANSACTION -D_FILE_OFFSET_BITS=64"
 
-CFLAGS="-std=gnu++14 -fpermissive -w -O0 -fno-omit-frame-pointer -include winposix.h -include cstring -include cstdio -include cstdlib -include cstdint -include climits -include ctime"
+CFLAGS="-std=gnu++14 -fpermissive -Wno-narrowing -w -O0 -fno-omit-frame-pointer -include winposix.h -include cstring -include cstdio -include cstdlib -include cstdint -include iconv.h -include climits -include ctime"
+if [ "$MODE" = "zig" ]; then
+	# clang diagnoses concrete incomplete-type member access in template
+	# bodies at definition (two-phase); this tree was written for lax
+	# compilers (gcc 4.1 warns, MSVC defers). Defer like MSVC so types
+	# defined later in the TU (gnpc/gplayer vs protocol_imp.h) resolve
+	# at instantiation instead of erroring.
+	CFLAGS="$CFLAGS -fdelayed-template-parsing"
+fi
+if [ "$MODE" != "zig" ]; then
+	# Current mingw-w64 CRTs already export clock_gettime(); tell
+	# winposix.cpp to skip its own copy (a duplicate C definition
+	# would fail the winposix link).
+	CFLAGS="$CFLAGS -DWP_HAVE_CLOCK_GETTIME=1"
+fi
 
 # cnet daemons are built through their own Makefiles with fully overridden
 # DEFINES / INCLUDES / LDFLAGS.
@@ -175,7 +208,7 @@ build_net_daemon() { # <stepname> <dir> <target> <extra defs>
 	step "$name" make -C "$ROOT/$dir" \
 		CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
 		DEFINES="$D_NET $CFLAGS $defs" \
-		INCLUDES="$NETINC" LDFLAGS="-O0" CFLAGS="$CFLAGS" \
+		INCLUDES="-I$ROOT/$dir $NETINC" LDFLAGS="-O0" CFLAGS="$CFLAGS" \
 		PCRELIB="$PCRELIB" CRYPTOLIB="$CRYPTOLIB" DLLIB="$DLLIB" \
 		"$target" -k -j"$JOBS"
 }
@@ -195,7 +228,7 @@ copy_pair() { # <src> <dst>
 
 # ------------------------------------------------------------------ winposix
 echo "=== building win32 shim layer ==="
-step "winposix" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 ${P2:+-I$P2} -c win32/winposix.cpp -o '$STATE/winposix.o' && $WP_AR crs '$STATE/winposix.a' '$STATE/winposix.o'"
+step "winposix" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -D_FILE_OFFSET_BITS=64 -I$P1 ${P2:+-I$P2} -c win32/winposix.cpp -o '$STATE/winposix.o' && $WP_AR crs '$STATE/winposix.a' '$STATE/winposix.o'"
 step "winiconv" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 ${P2:+-I$P2} -c win32/winiconv.cpp -o '$STATE/winiconv.o'"
 step "wsyslog" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 ${P2:+-I$P2} -c win32/wsyslog.cpp -o '$STATE/wsyslog.o'"
 step "wrusage" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 ${P2:+-I$P2} -c win32/wrusage.cpp -o '$STATE/wrusage.o'"
@@ -233,20 +266,35 @@ cnet_lib() { # <stepname> <dir> <makefile> <target> <extra defs> <extra includes
 	[ -n "$mf" ] && mfarg="-f $mf"
 	step "$name" make -C "$ROOT/$dir" $mfarg \
 		CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
-		DEFINES="$D_NET $CFLAGS $defs" INCLUDES="$NETINC $extrainc" \
+		DEFINES="$D_NET $CFLAGS $defs" INCLUDES="-I$ROOT/$dir $NETINC $extrainc" \
 		LDFLAGS="-O0" CFLAGS="$CFLAGS" "$tgt" -k -j"$JOBS"
 }
 cnet_lib "cnet-io-lib"     cnet/io      ""       lib ""  ""
 cnet_lib "cnet-gamed-lib"  cnet/gamed   ""       lib "-D__USE_SPEC_GAMEDATASEND__" "-I$ROOT/cnet/gamed/header -I$ROOT/cnet/gamed/header/include/common"
 cnet_lib "cnet-gdbclient"  cnet/gdbclient ""     lib ""  ""
 cnet_lib "cnet-logclient"  cnet/logclient Makefile.gs lib "-DUSE_LOGCLIENT" ""
-CSKINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cskill -I$ROOT/cskill/expr \
- -I$ROOT/cskill/header -I$ROOT/cskill/header/include -I$ROOT/cskill/skill \
- -I$ROOT/cskill/skills -I$ROOT/cskill/simulator -I$ROOT/cskill/gen/src"
-step "cskill-lib" make -C "$ROOT/cskill/skill" -f ../Makefilelib \
+# The cskill tree is GBK-encoded and Makefilelib forces ISO-8859-1 charsets,
+# which zig rejects.  For zig, compile an escaped copy (every high byte as
+# \xNN, byte-identical output); native gcc reads the GBK in place.
+CSKSRC="$ROOT/cskill"
+if [ "$MODE" = "zig" ]; then
+	step "cskill-u8" bash "$ROOT/tools/cskill-u8.sh" "$ROOT/cskill" "$STATE/cskill-u8"
+	CSKSRC="$STATE/cskill-u8"
+fi
+CSKINC=" -I$P1 ${P2:+-I$P2} -I$CSKSRC/skill -I$CSKSRC -I$CSKSRC/expr \
+ -I$CSKSRC/header -I$CSKSRC/header/include -I$CSKSRC/skills \
+ -I$CSKSRC/simulator -I$CSKSRC/gen/src"
+step "cskill-lib" make -C "$CSKSRC/skill" -f ../Makefilelib \
 	CC="$CSKCC" CPP="$CSKCC" LD="$WP_LD" AR="$WP_AR" \
 	DEFINES="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE $CFLAGS -D_SKILL_SERVER" \
 	INCLUDES="$CSKINC" LDFLAGS="-O0" CFLAGS="$CFLAGS" lib -k -j"$JOBS"
+
+# The gs link below reads the skill objects from their in-tree paths; when
+# zig compiled the escaped copy, copy the objects back into the tree.
+if [ "$MODE" = "zig" ]; then
+	cp -f "$CSKSRC/skill/"*.o "$ROOT/cskill/skill/" 2>/dev/null || true
+	cp -f "$CSKSRC/skills/"*.o "$ROOT/cskill/skills/" 2>/dev/null || true
+fi
 
 
 # ---------------------------------------------------------- cnet: daemons --

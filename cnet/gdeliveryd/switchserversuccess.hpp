@@ -25,7 +25,7 @@ class SwitchServerSuccess : public GNET::Protocol
 			return;
 		if (pinfo->user->switch_gsid == _GAMESERVER_ID_INVALID)
 		{
-			Log::log(LOG_ERR,"SwitchServerSuccess:: user(r:%d) is not in switch state.pinfo(%d),pinfo->user(%d)(linksid=%d,localsid=%d,status=%d)",pinfo->roleid,(int)pinfo,(int)pinfo->user,pinfo->user->linksid,pinfo->user->localsid,pinfo->user->status);
+			Log::log(LOG_ERR,"SwitchServerSuccess:: user(r:%d) is not in switch state.pinfo(%d),pinfo->user(%d)(linksid=%d,localsid=%d,status=%d)",pinfo->roleid,(int)(intptr_t)pinfo,(int)(intptr_t)pinfo->user,pinfo->user->linksid,pinfo->user->localsid,pinfo->user->status);
 		   	return;
 		}
 		//switch user's gs_id to dst_gsid

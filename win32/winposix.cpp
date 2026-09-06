@@ -1169,6 +1169,11 @@ char *ctime_r(const time_t *t, char *buf)
 	return buf;
 }
 
+/* NOTE: current mingw-w64 CRTs export clock_gettime(), so the native build
+ * defines WP_HAVE_CLOCK_GETTIME and skips this.  The zig/clang build has no
+ * usable CRT copy, so it keeps ours.  The declaration in winposix.h stays
+ * unconditional (a duplicate identical C declaration is legal). */
+#ifndef WP_HAVE_CLOCK_GETTIME
 int clock_gettime(int clk_id, struct timespec *tp)
 {
 	if (!tp) { errno = EFAULT; return -1; }
@@ -1196,6 +1201,7 @@ int clock_gettime(int clk_id, struct timespec *tp)
 		return 0;
 	}
 }
+#endif /* WP_HAVE_CLOCK_GETTIME */
 
 int gettimeofday(struct timeval *tv, void *tz)
 {
@@ -1443,8 +1449,9 @@ int munmap(void *addr, size_t len)
 
 } /* extern "C" */
 
-/* C++ linkage on purpose (see winposix.h): these overload the 1-argument CRT
- * mkdir() and the 32-bit CRT ftruncate(). */
+/* C++ linkage on purpose (see winposix.h): this overloads the 1-argument CRT
+ * mkdir().  ftruncate below is extern "C" instead: storage TUs include
+ * <unistd.h>, whose C declaration only merges with an identical C one. */
 int mkdir(const char *path, int mode)
 {
 	(void)mode; /* Windows has no POSIX permission bits */
@@ -1452,7 +1459,13 @@ int mkdir(const char *path, int mode)
 	return _mkdir(path);
 }
 
-int ftruncate(int fd, long long len)
+/* NOTE: declared (int, off_t) in winposix.h so it merges with mingw's
+ * <unistd.h>; defined here with long long so 64-bit WDB callers pass full
+ * lengths (winposix.o itself builds with _FILE_OFFSET_BITS=64 so the two
+ * spellings name the same type).  32-bit callers zero-extend, which is the
+ * correct value for them.  First on the link line, so this wins over the
+ * CRT's 32-bit ftruncate like the other interposers. */
+extern "C" int ftruncate(int fd, long long len)
 {
 	HANDLE h;
 	LARGE_INTEGER pos, cur;
@@ -1475,4 +1488,12 @@ int ftruncate(int fd, long long len)
 		return -1;
 	SetFilePointerEx(h, pos, NULL, FILE_BEGIN);
 	return 0;
+}
+
+/* setlinebuf(): gamedbd/gs ask for line-buffered stdout.  The UCRT honors
+ * _IOLBF the same as _IOFBF (no true line buffering), which is the best
+ * available and all these call sites need. */
+extern "C" void setlinebuf(FILE *f)
+{
+	if (f) setvbuf(f, NULL, _IOLBF, 0);
 }

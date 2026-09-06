@@ -51,6 +51,7 @@
  * Win32 meaning, so drop the macro right after the headers are done. */
 #undef WAIT_TIMEOUT
 #include <io.h>
+#include <direct.h>
 #include <process.h>
 #include <errno.h>
 #include <assert.h>
@@ -355,6 +356,14 @@ int         gettimeofday(struct timeval *tv, void *tz);
 int         clock_gettime(int clk_id, struct timespec *tp);
 ssize_t     pread(int fd, void *buf, size_t len, long long off);
 ssize_t     pwrite(int fd, const void *buf, size_t len, long long off);
+/* NOTE: this prototype is spelled (int, off_t) - identical to mingw
+ * <unistd.h>'s - because storage TUs include both headers and two C
+ * declarations may only share a name when they share a signature.
+ * off_t is 64-bit in every TU that needs it (the WDB steps build with
+ * _FILE_OFFSET_BITS=64); the definition takes long long so it also
+ * serves 32-bit callers (zero-extended) correctly. */
+int         ftruncate(int fd, off_t len);
+void        setlinebuf(FILE *f);
 ssize_t     readv(int fd, const struct iovec *iov, int iovcnt);
 ssize_t     writev(int fd, const struct iovec *iov, int iovcnt);
 int         fsync(int fd);
@@ -432,11 +441,13 @@ inline int wp_getsockopt(int fd, int level, int optname,
 
 /* ---- C++-linkage overloads (must NOT be extern "C") ---------------------- */
 /* MSVCRT already exports 1-argument mkdir(); the two-argument POSIX form used
- * by db.h/accessdb.cpp/storagewdb.h overloads it.  Likewise our ftruncate()
- * takes a 64-bit length while the CRT's takes off_t.  C++ linkage keeps both
- * overloads legal (two extern "C" functions may not share a name). */
+ * by db.h/accessdb.cpp/storagewdb.h overloads it.  C++ linkage keeps the
+ * overload legal (two extern "C" functions may not share a name).  ftruncate
+ * used to live here too, but storage TUs include <unistd.h> after this
+ * header, and a C declaration may not follow a C++ overload - so ftruncate
+ * is declared in the extern "C" block above with mingw's exact signature
+ * and our definition interposes at link time like the socket shims. */
 int mkdir(const char *path, int mode);
-int ftruncate(int fd, long long len);
 
 /* inet_aton() is missing from Winsock; gdeliveryd parses listener addresses
  * with it.  Full dotted quads go through InetPton, short forms fall back to

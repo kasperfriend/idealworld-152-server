@@ -27,7 +27,7 @@ public:
 	int localsid;
 	int userid;
 
-	void DBPlayerPositionReset::DBResetSuccess(int roleid, int worldtag, float x, float y, float z)
+	void DBResetSuccess(int roleid, int worldtag, float x, float y, float z)
 	{
 		UserInfo * pinfo = UserContainer::GetInstance().FindUser(userid);
 
@@ -56,7 +56,7 @@ public:
 		dsm->Send(sid,re); 
 	}
 
-	void DBPlayerPositionReset::DBResetException()
+	void DBResetException()
 	{
 		GDeliveryServer* dsm=GDeliveryServer::GetInstance();
 		DBPlayerPositionResetArg *arg = (DBPlayerPositionResetArg *)argument;

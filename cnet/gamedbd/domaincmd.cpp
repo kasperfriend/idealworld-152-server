@@ -151,7 +151,11 @@ bool DomainCmd::Validate(Octets& data, Octets& stamp)
 	EVP_PKEY *pkey;
 	EVP_MD_CTX *ctx;
 
+#if __GNUC__ == 4
+	const unsigned char *cert_data = PW_certificate; 
+#else
 	unsigned char *cert_data = PW_certificate; 
+#endif
 	x509 = d2i_X509(NULL, &cert_data , sizeof(PW_certificate));
 	pkey = X509_get_pubkey(x509);
 	ctx = EVP_MD_CTX_create();
