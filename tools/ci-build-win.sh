@@ -97,31 +97,21 @@ exec "$ZIG" c++ -target x86_64-windows-gnu -D__MINGW_FORTIFY_LEVEL=0 \
 	"\$@" \
 	"$STATE/winposix.a" "$STATE/winiconv.o" "$STATE/wsyslog.o" \
 	"$STATE/wrusage.o" "$STATE/wpmd5.o" "$STATE/wpcre.o" "$STATE/wpopenssl.o" \
-	-lws2_32 -lwinpthread -lbcrypt -lpsapi
+	"$STATE/wpthread.o" \
+	-lws2_32 -lbcrypt -lpsapi
 EOF
 	chmod +x "$TC/cc" "$TC/cxx" "$TC/ld"
-	# cskill's Makefilelib adds -finput-charset=ISO-8859-1/-fexec-charset=...
-	# which clang does not accept; strip them (gcc-only flags).
-	cat > "$TC/cxx_ncs" <<EOF
-#!/usr/bin/env bash
-args=()
-while [ \$# -gt 0 ]; do
-	case "\$1" in
-		-finput-charset=*|-fexec-charset=*) shift ;;
-		*) args+=("\$1"); shift ;;
-	esac
-done
-exec "$TC/cxx" "\${args[@]}"
-EOF
-	chmod +x "$TC/cxx_ncs"
+	# cskill passes -finput-charset/-fexec-charset=ISO-8859-1 (GBK bytes);
+	# clang accepts these like gcc does, so no filtering is needed.
 	WP_CC="$TC/cxx"; WP_CXX="$TC/cxx"; WP_LD="$TC/ld"
-	CSKCC="$TC/cxx_ncs"
+	CSKCC="$TC/cxx"
 	WP_AR="ar"
 	WP_CCBIN="$TC/cc"
 	# avoid linking pcre/openssl when they are not available
 	PCRELIB=""
 	CRYPTOLIB=""
 	DLLIB=""
+	PTHREADLIB=""
 else
 	WP_CC="${WP_CC:-gcc}"; WP_CXX="${WP_CXX:-g++}"; WP_AR="${WP_AR:-ar}"
 	echo "toolchain: native ($WP_CC / $WP_CXX)"
@@ -140,6 +130,7 @@ EOF
 	WP_CCBIN="$WP_CC"
 	PCRELIB="-lpcre"
 	CRYPTOLIB="-lcrypto"
+	PTHREADLIB="-lwinpthread"
 	DLLIB=""
 fi
 
@@ -212,6 +203,7 @@ if [ "$MODE" = "zig" ]; then
 	step "wpmd5" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 -I$P2 -c win32/wpmd5.cpp -o '$STATE/wpmd5.o'"
 	step "wpcre" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 -I$P2 -c win32/wpcre.cpp -o '$STATE/wpcre.o'"
 	step "wpopenssl" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 -I$P2 -c win32/wpopenssl.cpp -o '$STATE/wpopenssl.o'"
+	step "wpthread" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 -I$P2 -c win32/wpthread.cpp -o '$STATE/wpthread.o'"
 fi
 
 # -------------------------------------------------------------------- perf
@@ -288,7 +280,7 @@ step "gs" make -C "$ROOT/cgame/gs" gs \
 	INC="$GAMEINC" CMLIB="$ROOT/cgame/libcommon.a $ROOT/cgame/libonline.a \
 	$ROOT/cgame/libgs/gs/*.o $ROOT/cgame/libgs/io/*.o $ROOT/cgame/libgs/db/*.o \
 	$ROOT/cskill/skill/*.o $ROOT/cskill/skills/*.o $ROOT/cgame/libgs/log/*.o \
-	$ROOT/cgame/collision/libTrace.a" ALLLIB="-lws2_32 -lwinpthread -lbcrypt $PCRELIB $CRYPTOLIB" \
+	$ROOT/cgame/collision/libTrace.a" ALLLIB="-lws2_32 $PTHREADLIB -lbcrypt $PCRELIB $CRYPTOLIB" \
 	-k -j"$JOBS"
 
 # ------------------------------------------------------------- staging ------

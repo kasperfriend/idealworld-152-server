@@ -24,11 +24,10 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <time.h>
-#include <pthread.h>
 #include <sys/time.h>
 #include <sys/un.h>
 #include <sys/uio.h>
-#include <poll.h>
+#include <sys/poll.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>

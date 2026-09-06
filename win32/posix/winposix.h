@@ -53,6 +53,7 @@
 #include <io.h>
 #include <process.h>
 #include <errno.h>
+#include <assert.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <time.h>

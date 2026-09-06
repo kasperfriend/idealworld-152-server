@@ -167,7 +167,7 @@ jobs:
             for log in ci-build-win/*.log; do
               echo "### $log"
               echo '```'
-              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | head -n 60
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | sort -u | head -n 25
               echo '```'
               echo ""
             done
@@ -194,12 +194,13 @@ jobs:
             echo "::error::$step [$line] $tu :: ${ccerr:-no error line found}"
           done
           echo "::notice::steps ok=$okc failed=$failc"
+          export PATH="/c/Program Files/Git/bin:/c/Program Files/Git/cmd:$PATH"
           GH_BIN="$(command -v gh || command -v gh.exe || true)"
           for cand in "/c/Program Files/GitHub CLI/gh.exe" "C:/Program Files/GitHub CLI/gh.exe"; do
             if [ -z "$GH_BIN" ] && [ -x "$cand" ]; then GH_BIN="$cand"; fi
           done
           if [ -n "$GH_BIN" ]; then
-            ERR="$("$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md 2>&1)"
+            ERR="$("$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --repo ${{ github.repository }} --body-file digest.md 2>&1)"
             if [ $? -eq 0 ]; then
               echo "::notice::posted digest to PR as comment"
             else
@@ -309,7 +310,7 @@ jobs:
             for log in ci-build-win/*.log; do
               echo "### $log"
               echo '```'
-              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | head -n 60
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | sort -u | head -n 25
               echo '```'
               echo ""
             done
@@ -336,12 +337,13 @@ jobs:
             echo "::error::$step [$line] $tu :: ${ccerr:-no error line found}"
           done
           echo "::notice::steps ok=$okc failed=$failc"
+          export PATH="/c/Program Files/Git/bin:/c/Program Files/Git/cmd:$PATH"
           GH_BIN="$(command -v gh || command -v gh.exe || true)"
           for cand in "/c/Program Files/GitHub CLI/gh.exe" "C:/Program Files/GitHub CLI/gh.exe"; do
             if [ -z "$GH_BIN" ] && [ -x "$cand" ]; then GH_BIN="$cand"; fi
           done
           if [ -n "$GH_BIN" ]; then
-            ERR="$("$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md 2>&1)"
+            ERR="$("$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --repo ${{ github.repository }} --body-file digest.md 2>&1)"
             if [ $? -eq 0 ]; then
               echo "::notice::posted digest to PR as comment"
             else
