@@ -18,6 +18,9 @@
 
 namespace GNET
 {
+template<typename Container> class STLContainer;
+template<typename Container>
+STLContainer<Container> MarshalContainer(const Container &c);
 
 template<typename T>
 inline T& remove_const(const T &t) { return const_cast<T&>(t); }

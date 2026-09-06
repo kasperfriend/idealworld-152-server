@@ -1,11 +1,7 @@
 #ifndef __GNET_GFACTION_STATE
 #define __GNET_GFACTION_STATE
 
-#ifdef WIN32
-#include "gnproto.h"
-#else
 #include "protocol.h"
-#endif
 
 namespace GNET
 {

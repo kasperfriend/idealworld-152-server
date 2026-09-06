@@ -1,9 +1,4 @@
-#ifdef WIN32
-#include <winsock2.h>
-#include "gncompress.h"
-#else
 #include "binder.h"
-#endif
 #include "dbsellpoint.hrp"
 #include "forbiduser.hrp"
 #include "queryuserid.hrp"

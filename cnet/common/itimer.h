@@ -65,6 +65,17 @@ private:
 	void Run()
 	{
 #if defined _REENTRANT_
+#ifdef WIN32
+		/* Windows has no POSIX interval-timer signals; poll on a timer.
+		 * IntervalTimer::Update() does the real dispatch. */
+		unsigned int ms = (unsigned int)(interval / 1000);
+		if (ms == 0) ms = 1;
+		while (!stop)
+		{
+			Sleep(ms);
+			Update();
+		}
+#else
 		sigset_t sigs;
 
 		sigfillset(&sigs);
@@ -84,6 +95,7 @@ private:
 			Update();
 		}
 		setitimer(ITIMER_REAL, NULL, NULL);
+#endif
 #endif
 	}
 public:

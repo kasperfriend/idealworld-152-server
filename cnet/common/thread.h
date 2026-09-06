@@ -2,7 +2,9 @@
 #define __THREAD_H
 
 #include <signal.h>
+#include <stdint.h>
 
+#include <map>
 #include <vector>
 #include <string>
 #include <queue>
@@ -151,6 +153,10 @@ namespace Thread
 	public:
 		static void setupdaemon( )
 		{
+#ifdef WIN32
+			/* Windows has no fork(); daemons run in the foreground and the
+			 * launcher/service wrapper handles detachment. */
+#else
 			switch(fork())
 			{
 			case    0:
@@ -162,6 +168,7 @@ namespace Thread
 			}
 
 			setsid();
+#endif
 		}
 
 		static void SetPolicy( Policy * policy )
@@ -235,11 +242,7 @@ namespace Thread
 		static void * RunThread( void * pParam )
 		{
 
-			#ifdef __i386__
-			int nThreadPrior = (int)pParam;
-			#elif defined __x86_64__
-			int nThreadPrior = (long)pParam;
-			#endif
+			int nThreadPrior = (int)(intptr_t)pParam;
 
 			pthread_detach( pthread_self() );
 
@@ -386,6 +389,10 @@ namespace Thread
 	public:
 		static void setupdaemon( )
 		{
+#ifdef WIN32
+			/* Windows has no fork(); daemons run in the foreground and the
+			 * launcher/service wrapper handles detachment. */
+#else
 			switch(fork())
 			{
 			case    0:
@@ -397,6 +404,7 @@ namespace Thread
 			}
 
 			setsid();
+#endif
 		}
 
 		static void SetPolicy( Policy * policy )

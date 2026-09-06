@@ -31,6 +31,9 @@ class CPWPasswordCheck
 		SIZE_BUFFERSTIRNG	= 32,
 	};
 	
+	/* minwindef.h defines MAKEWORD as a macro; drop it so this inline
+	 * helper (and callers below) resolve to the function. */
+#undef MAKEWORD
 	inline static unsigned short MAKEWORD( char a, char b)
 	{
 		return ((unsigned short)(((unsigned char)(b)) | ((unsigned short)((unsigned char)(a))) << 8));

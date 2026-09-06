@@ -1,9 +1,4 @@
-#ifdef WIN32
-#include <winsock2.h>
-#include "gncompress.h"
-#else
 #include "binder.h"
-#endif
 #include "dbcreaterole.hrp"
 #include "dbdeleterole.hrp"
 #include "dbundodeleterole.hrp"

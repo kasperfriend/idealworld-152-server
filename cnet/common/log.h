@@ -156,7 +156,7 @@ namespace GNET
 					return;
 
 				int len = 256*1024;
-				setsockopt( instance().LogFile, SOL_SOCKET, SO_SNDBUF, (const void*)&len, sizeof(len) );
+				setsockopt( instance().LogFile, SOL_SOCKET, SO_SNDBUF, (const char*)&len, sizeof(len) );
 
 				fcntl( instance().LogFile, F_SETFD, FD_CLOEXEC );
 				if( -1 == connect(instance().LogFile, (const sockaddr*)&addr, sizeof(addr) ) )
@@ -401,7 +401,7 @@ namespace GNET
 							buf, userid, sid, peer.c_str() );
 		}
 
-		//ÈÕÖ¾¹æ·¶»¯ÐÞ¸Ä
+		//ï¿½ï¿½Ö¾ï¿½æ·¶ï¿½ï¿½ï¿½Þ¸ï¿½
 		static void login( Octets account, int userid, unsigned int sid, std::string peer, std::string mac )
 		{
 			char buf[128];
@@ -412,7 +412,7 @@ namespace GNET
 							buf, userid, sid, peer.c_str(), mac.c_str() );
 		}
 
-		//ÈÕÖ¾¹æ·¶»¯ÐÞ¸Ä
+		//ï¿½ï¿½Ö¾ï¿½æ·¶ï¿½ï¿½ï¿½Þ¸ï¿½
 		static void login( Octets account, int userid, unsigned int sid, const std::string & peer, const std::string & mac, const std::string & mid )
 		{
 			char buf[128];

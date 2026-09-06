@@ -1,11 +1,7 @@
 #ifndef __GNET_GLINKD_STATE
 #define __GNET_GLINKD_STATE
 
-#ifdef WIN32
-#include "gnproto.h"
-#else
 #include "protocol.h"
-#endif
 
 namespace GNET
 {

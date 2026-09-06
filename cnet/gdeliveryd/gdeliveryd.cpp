@@ -74,7 +74,8 @@ int main(int argc, char *argv[])
 		switch(opt)
 		{
 			case 'v':
-				printf("Compiled By "__USER__ ", "__DATE__ " "__TIME__ "\n");
+		printf("Compiled " __DATE__ " " __TIME__ "
+");
 				printf("%s\n", XMLVERSION);
 				exit(0);
 			default:
