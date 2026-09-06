@@ -150,6 +150,8 @@ jobs:
         # network), so also post a bounded error digest as a PR comment.
         if: failure() && github.event.pull_request.number != ''
         run: |
+          # The runner wraps scripts with -e; a failing grep must not kill this.
+          set +e
           set -uo pipefail
           {
             echo "## Windows build failure digest (native job, run ${{ github.run_number }})"
@@ -283,6 +285,8 @@ jobs:
         # network), so also post a bounded error digest as a PR comment.
         if: failure() && github.event.pull_request.number != ''
         run: |
+          # The runner wraps scripts with -e; a failing grep must not kill this.
+          set +e
           set -uo pipefail
           {
             echo "## Windows build failure digest (zig job, run ${{ github.run_number }})"
