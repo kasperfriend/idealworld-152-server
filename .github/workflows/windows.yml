@@ -157,60 +157,53 @@ jobs:
             echo "| step | result |"
             echo "| ---- | ------ |"
             for f in ci-build-win/*.status; do
-              printf '| %s | %s |\n' "$$(basename "$$f" .status)" "$$(cat "$$f" 2>/dev/null || echo MISSING)"
+              printf '| %s | %s |\n' "$(basename "$f" .status)" "$(cat "$f" 2>/dev/null || echo MISSING)"
             done
             echo ""
             echo "<details><summary>first error lines per log</summary>"
             echo ""
             for log in ci-build-win/*.log; do
-              echo "### $$log"
+              echo "### $log"
               echo '```'
-              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$$log" 2>/dev/null | head -n 60
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | head -n 60
               echo '```'
               echo ""
             done
             echo "</details>"
           } > digest-full.md
           head -c 50000 digest-full.md > digest.md
-          echo "digest bytes: $$(wc -c < digest-full.md)"
+          echo "digest bytes: $(wc -c < digest-full.md)"
           okc=0; failc=0
           for f in ci-build-win/*.status; do
-            [ -e "$$f" ] || continue
-            line="$$(cat "$$f" | head -c 300)"
-            step="$$(basename "$$f" .status)"
-            if printf '%s' "$$line" | grep -q '^ok'; then okc=$$((okc+1)); continue; fi
-            failc=$$((failc+1))
-            echo "::error::step $$step: $$line"
-            log="ci-build-win/$$step.log"
-            if [ -f "$$log" ]; then
-              tail -n 3 "$$log" | while IFS= read -r line || [ -n "$$line" ]; do
-                echo "::error::log $$step: $${line:0:700}"
+            [ -e "$f" ] || continue
+            line="$(cat "$f" | head -c 300)"
+            step="$(basename "$f" .status)"
+            if printf '%s' "$line" | grep -q '^ok'; then okc=$((okc+1)); continue; fi
+            failc=$((failc+1))
+            echo "::error::step $step: $line"
+            log="ci-build-win/$step.log"
+            if [ -f "$log" ]; then
+              tail -n 3 "$log" | while IFS= read -r line || [ -n "$line" ]; do
+                echo "::error::log $step: ${line:0:700}"
               done
             else
-              echo "::error::log $$step: (no $$log)"
+              echo "::error::log $step: (no $log)"
             fi
           done
-          echo "::notice::steps ok=$$okc failed=$$failc"
-          GH_BIN="$$(command -v gh || command -v gh.exe || true)"
+          echo "::notice::steps ok=$okc failed=$failc"
+          GH_BIN="$(command -v gh || command -v gh.exe || true)"
           for cand in "/c/Program Files/GitHub CLI/gh.exe" "C:/Program Files/GitHub CLI/gh.exe"; do
-            if [ -z "$$GH_BIN" ] && [ -x "$$cand" ]; then GH_BIN="$$cand"; fi
+            if [ -z "$GH_BIN" ] && [ -x "$cand" ]; then GH_BIN="$cand"; fi
           done
-          if [ -n "$$GH_BIN" ]; then
-            ERR="$$("$$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md 2>&1)"
-            if [ $$? -eq 0 ]; then
+          if [ -n "$GH_BIN" ]; then
+            ERR="$("$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md 2>&1)"
+            if [ $? -eq 0 ]; then
               echo "::notice::posted digest to PR as comment"
             else
-              echo "::warning::gh pr comment failed: $${ERR:0:800}"
+              echo "::warning::gh pr comment failed: ${ERR:0:800}"
             fi
           else
             echo "::warning::gh CLI not found; digest only available as annotations/artifacts"
-          fi
-          exit 0
-          fi
-          if "$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
-            echo "digest posted as PR comment"
-          else
-            echo "::warning::gh pr comment failed; digest only available as annotations/artifacts"
           fi
           exit 0
 
@@ -303,59 +296,52 @@ jobs:
             echo "| step | result |"
             echo "| ---- | ------ |"
             for f in ci-build-win/*.status; do
-              printf '| %s | %s |\n' "$$(basename "$$f" .status)" "$$(cat "$$f" 2>/dev/null || echo MISSING)"
+              printf '| %s | %s |\n' "$(basename "$f" .status)" "$(cat "$f" 2>/dev/null || echo MISSING)"
             done
             echo ""
             echo "<details><summary>first error lines per log</summary>"
             echo ""
             for log in ci-build-win/*.log; do
-              echo "### $$log"
+              echo "### $log"
               echo '```'
-              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$$log" 2>/dev/null | head -n 60
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | head -n 60
               echo '```'
               echo ""
             done
             echo "</details>"
           } > digest-full.md
           head -c 50000 digest-full.md > digest.md
-          echo "digest bytes: $$(wc -c < digest-full.md)"
+          echo "digest bytes: $(wc -c < digest-full.md)"
           okc=0; failc=0
           for f in ci-build-win/*.status; do
-            [ -e "$$f" ] || continue
-            line="$$(cat "$$f" | head -c 300)"
-            step="$$(basename "$$f" .status)"
-            if printf '%s' "$$line" | grep -q '^ok'; then okc=$$((okc+1)); continue; fi
-            failc=$$((failc+1))
-            echo "::error::step $$step: $$line"
-            log="ci-build-win/$$step.log"
-            if [ -f "$$log" ]; then
-              tail -n 3 "$$log" | while IFS= read -r line || [ -n "$$line" ]; do
-                echo "::error::log $$step: $${line:0:700}"
+            [ -e "$f" ] || continue
+            line="$(cat "$f" | head -c 300)"
+            step="$(basename "$f" .status)"
+            if printf '%s' "$line" | grep -q '^ok'; then okc=$((okc+1)); continue; fi
+            failc=$((failc+1))
+            echo "::error::step $step: $line"
+            log="ci-build-win/$step.log"
+            if [ -f "$log" ]; then
+              tail -n 3 "$log" | while IFS= read -r line || [ -n "$line" ]; do
+                echo "::error::log $step: ${line:0:700}"
               done
             else
-              echo "::error::log $$step: (no $$log)"
+              echo "::error::log $step: (no $log)"
             fi
           done
-          echo "::notice::steps ok=$$okc failed=$$failc"
-          GH_BIN="$$(command -v gh || command -v gh.exe || true)"
+          echo "::notice::steps ok=$okc failed=$failc"
+          GH_BIN="$(command -v gh || command -v gh.exe || true)"
           for cand in "/c/Program Files/GitHub CLI/gh.exe" "C:/Program Files/GitHub CLI/gh.exe"; do
-            if [ -z "$$GH_BIN" ] && [ -x "$$cand" ]; then GH_BIN="$$cand"; fi
+            if [ -z "$GH_BIN" ] && [ -x "$cand" ]; then GH_BIN="$cand"; fi
           done
-          if [ -n "$$GH_BIN" ]; then
-            ERR="$$("$$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md 2>&1)"
-            if [ $$? -eq 0 ]; then
+          if [ -n "$GH_BIN" ]; then
+            ERR="$("$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md 2>&1)"
+            if [ $? -eq 0 ]; then
               echo "::notice::posted digest to PR as comment"
             else
-              echo "::warning::gh pr comment failed: $${ERR:0:800}"
+              echo "::warning::gh pr comment failed: ${ERR:0:800}"
             fi
           else
             echo "::warning::gh CLI not found; digest only available as annotations/artifacts"
-          fi
-          exit 0
-          fi
-          if "$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
-            echo "digest posted as PR comment"
-          else
-            echo "::warning::gh pr comment failed; digest only available as annotations/artifacts"
           fi
           exit 0
