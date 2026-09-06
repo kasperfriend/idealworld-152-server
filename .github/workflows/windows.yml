@@ -180,15 +180,26 @@ jobs:
           } > digest-full.md
           head -c 50000 digest-full.md > digest.md
           echo "digest bytes: $(wc -c < digest.md)"
-          if gh pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
+          # Annotations first: they need no permissions and are always readable.
+          for f in ci-build-win/*.status; do
+            grep -q '^ok' "$f" 2>/dev/null && continue
+            echo "::error::step $(basename "$f" .status): $(cat "$f" | head -c 300)"
+          done
+          grep -h -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" ci-build-win/*.log 2>/dev/null | head -n 12 | while IFS= read -r line; do
+            echo "::error::${line:0:900}"
+          done
+          # Full digest as a PR comment (best effort).
+          GH_BIN="$(command -v gh || command -v gh.exe || true)"
+          if [ -z "$GH_BIN" ]; then
+            echo "::warning::gh CLI not found; digest only available as annotations/artifacts"
+            exit 0
+          fi
+          if "$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
             echo "digest posted as PR comment"
           else
-            echo "PR comment post failed; falling back to step annotations"
-            grep -h -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" ci-build-win/*.log 2>/dev/null | head -n 10 | while IFS= read -r line; do
-              echo "::error::${line:0:1000}"
-            done
-            exit 1
+            echo "::warning::gh pr comment failed; digest only available as annotations/artifacts"
           fi
+          exit 0
 
       - name: Publish GitHub Release
         if: github.event_name == 'workflow_dispatch'
@@ -302,12 +313,23 @@ jobs:
           } > digest-full.md
           head -c 50000 digest-full.md > digest.md
           echo "digest bytes: $(wc -c < digest.md)"
-          if gh pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
+          # Annotations first: they need no permissions and are always readable.
+          for f in ci-build-win/*.status; do
+            grep -q '^ok' "$f" 2>/dev/null && continue
+            echo "::error::step $(basename "$f" .status): $(cat "$f" | head -c 300)"
+          done
+          grep -h -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" ci-build-win/*.log 2>/dev/null | head -n 12 | while IFS= read -r line; do
+            echo "::error::${line:0:900}"
+          done
+          # Full digest as a PR comment (best effort).
+          GH_BIN="$(command -v gh || command -v gh.exe || true)"
+          if [ -z "$GH_BIN" ]; then
+            echo "::warning::gh CLI not found; digest only available as annotations/artifacts"
+            exit 0
+          fi
+          if "$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
             echo "digest posted as PR comment"
           else
-            echo "PR comment post failed; falling back to step annotations"
-            grep -h -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" ci-build-win/*.log 2>/dev/null | head -n 10 | while IFS= read -r line; do
-              echo "::error::${line:0:1000}"
-            done
-            exit 1
+            echo "::warning::gh pr comment failed; digest only available as annotations/artifacts"
           fi
+          exit 0

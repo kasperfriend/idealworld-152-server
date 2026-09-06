@@ -58,13 +58,8 @@
 #include <time.h>
 #include <sys/types.h>
 
-/* BSD wall-clock zone descriptor (mutex.h/benchmark.h use it); mingw does
- * not provide one. */
-struct timezone
-{
-	int tz_minuteswest;
-	int tz_dsttime;
-};
+/* NOTE: no struct timezone here - current mingw-w64 <time.h> already defines
+ * it, and a second definition breaks every translation unit. */
 
 #ifdef __cplusplus
 extern "C" {
