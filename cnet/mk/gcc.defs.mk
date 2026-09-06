@@ -34,12 +34,12 @@ else
 endif
 
 ifeq ($(SINGLE_THREAD),true)
-	DEFINES = -Wall -fpermissive -Wno-narrowing -Wno-deprecated-declarations -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 $(ENV) -include cstring -include iconv.h -include climits -include ctime #-mcpu=pentium4
+	DEFINES = -Wall -fpermissive -Wno-narrowing -Wno-deprecated-declarations -D_GNU_SOURCE -DUSE_EPOLL -D_FILE_OFFSET_BITS=64 $(ENV) -include cstring -include cstdio -include cstdlib -include cstdint -include iconv.h -include climits -include ctime #-mcpu=pentium4
 	SHAREOBJ := $(SHARESRC:%.cpp=%.o)
 	LOGOBJ := $(LOGSRC:%.cpp=%.o) 
 	LOGSTUB := $(LOGSTUBSRC:%.cxx=%.o) 
 else
-	DEFINES = -Wall -fpermissive -Wno-narrowing -Wno-deprecated-declarations -D_GNU_SOURCE -pthread -D_REENTRANT_ -D_FILE_OFFSET_BITS=64 $(ENV) -include cstring -include iconv.h -include climits -include ctime #-mcpu=pentium4 
+	DEFINES = -Wall -fpermissive -Wno-narrowing -Wno-deprecated-declarations -D_GNU_SOURCE -DUSE_EPOLL -pthread -D_REENTRANT_ -D_FILE_OFFSET_BITS=64 $(ENV) -include cstring -include cstdio -include cstdlib -include cstdint -include iconv.h -include climits -include ctime #-mcpu=pentium4 
 	LDFLAGS += -pthread 
 	SHAREOBJ := $(SHARESRC:%.cpp=%_m.o)
 	LOGOBJ := $(LOGSRC:%.cpp=%_m.o)

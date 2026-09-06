@@ -37,31 +37,15 @@ protected:
 	template <int n >
 	void SetParentState(int state)
 	{
-		switch(state)
-		{
-			default:
-			ASSERT(false);
-			case gactive_imp::INVADER_LVL_0:
-			((gplayer*)_imp->_parent)->object_state &= ~(gactive_object::STATE_INVADER|gactive_object::STATE_PARIAH);
-			_imp->_faction &= ~FACTION_PARIAH;
-			((gplayer*)_imp->_parent)->base_info.faction = _imp->_faction;
-			break;
-
-			case gactive_imp::INVADER_LVL_1:
-			((gplayer*)_imp->_parent)->object_state &= ~gactive_object::STATE_PARIAH;
-			((gplayer*)_imp->_parent)->object_state |= gactive_object::STATE_INVADER;
-			break;
-			
-			case gactive_imp::INVADER_LVL_2:
-			UpdatePariahState();
-			((gplayer*)_imp->_parent)->object_state &= ~gactive_object::STATE_INVADER;
-			((gplayer*)_imp->_parent)->object_state |= gactive_object::STATE_PARIAH;
-			_imp->_faction |= FACTION_PARIAH;
-			((gplayer*)_imp->_parent)->base_info.faction = _imp->_faction;
-			((gplayer*)_imp->_parent)->pariah_state = _pariah_state;
-			break;
-		}
+		// Out of line on purpose: the body needs the complete gactive_imp
+		// (its nested INVADER_LVL_* enums are used as case labels) and gimp.h,
+		// from which that type comes, is part of this header's own include
+		// graph - so gactive_imp may still be incomplete wherever this header
+		// is expanded.  See player_invade::SetParentStateImpl().
+		SetParentStateImpl(state);
 	}
+
+	void SetParentStateImpl(int state);
 
 	template <int n >
 	void SetParentPariahState(int state)

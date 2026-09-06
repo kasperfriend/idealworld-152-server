@@ -23,6 +23,9 @@
 #include "greincarnationdata"
 #include "dbcopyrole.hrp"
 
+// Role2Info()/Info2Role() are defined directly inside namespace GDB, so they
+// must not carry an explicit 'GDB::' qualifier: modern C++ rejects a redundant
+// namespace qualifier on a definition that is already lexically in that namespace.
 namespace GDB
 {
 	namespace
@@ -649,7 +652,7 @@ namespace GDB
 		}
 };
 
-	bool GDB::Role2Info(GNET::GRoleDetail * pRole,base_info& info,vecdata& data,int data_mask,
+	bool Role2Info(GNET::GRoleDetail * pRole,base_info& info,vecdata& data,int data_mask,
 			const GPetCorral& corral, const GRoleStatusExtraProp & extraprop)
 	{
 		if(data_mask!=GET_ALL)
@@ -789,7 +792,7 @@ namespace GDB
 		release_reincarnationdata(data.reincarnation);
 	}
 
-	void GDB::Info2Role(GNET::GRoleDetail * pRole,const base_info & info,const vecdata & data)
+	void Info2Role(GNET::GRoleDetail * pRole,const base_info & info,const vecdata & data)
 	{
 		pRole->id = info.id;
 		pRole->userid = info.userid;

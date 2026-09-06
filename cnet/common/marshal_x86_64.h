@@ -211,6 +211,10 @@ public:
 		//OctetsStream& operator << (long long x)          { return push_byte(byteorder_64(x)); }
 		//OctetsStream& operator << (unsigned long long x) { return push_byte(byteorder_64(x)); }
 		OctetsStream& operator << (int64_t x)            { return push_byte(byteorder_64(x)); }
+		// size_t is 'unsigned long' on LP64 but was 'unsigned int' on the original ILP32
+		// build, where it marshalled as 4 bytes.  Without this overload every
+		// 'os << v.size()' is ambiguous ('unsigned int' vs 'int64_t'), so keep 32 bits.
+		OctetsStream& operator << (unsigned long x)      { return push_byte(byteorder_32((unsigned int)x)); }
 		OctetsStream& operator << (float x)              { return push_byte(byteorder_32(aliasing_cast<int>(x))); }
 		OctetsStream& operator << (double x)             { return push_byte(byteorder_64(aliasing_cast<unsigned long long>(x))); }
 		OctetsStream& operator << (const Marshal &x)     { return x.marshal(*this); }

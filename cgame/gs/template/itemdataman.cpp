@@ -1022,7 +1022,7 @@ int itemdataman::generate_addon_from_rands(unsigned int item_id, unsigned int ad
 }
 
 
-int	itemdataman::generate_equipment_addon(DATA_TYPE datatype,char * header, unsigned int addon_id, addon_data & data)
+int	itemdataman::generate_equipment_addon(DATA_TYPE datatype,char * header, size_t addon_id, addon_data & data)
 {
 
 	unsigned int id = addon_id;

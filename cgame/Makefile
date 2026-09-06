@@ -1,13 +1,18 @@
 LIBSUBDIR=io
 LIBOBJ = io/pollio.o
 SUBDIR=gs 
-all: lib solib collision $(SUBDIR)
+all: cmlib lib solib collision $(SUBDIR)
 
-$(SUBDIR): FORCE
+# cgame/libcommon.a, built from cgame/common - gs links against it
+cmlib: FORCE
+	cd common; make
+
+$(SUBDIR): cmlib FORCE
 	cd $@; make
 
 lib:	$(LIBSUBDIR) gslib
-	ar crs libonline.a $(LIBOBJ) 
+	rm -f libonline.a
+	ar crs libonline.a $(LIBOBJ)
 
 collision: FORCE
 	cd collision; make

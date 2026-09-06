@@ -20,6 +20,16 @@ template <> bool CheckObjHeartbeat<1>(gobject * obj)
 */
 
 
+// 'world' and 'gobject_imp' are intentionally incomplete in this header (that is
+// what the world_depend helper below is for), but obj_manager<>::OnHeartbeat()
+// still has to read obj->plane / obj->imp.  Older compilers were happy to leave
+// that for instantiation time, current ones are not, so the two accesses are
+// declared here and defined in objmanager.cpp - which does include world.h.
+// Keeping them out of line makes every translation unit that instantiates
+// obj_manager<> compile, whatever its include order is.
+bool objman_plane_inactive(gobject * obj);
+int  objman_dispatch(gobject * obj, MSG & msg);
+
 template<int foo> struct world_depend { typedef world type; };
 template<int foo> struct world_manager_depend { typedef world_manager type; };
 template <typename T>
@@ -306,7 +316,7 @@ public:
 			gobject * obj = *it;
 			obj->Lock();
 			//刨除自己的ID  这个判断是否必要?
-			if(!obj->IsActived() || !obj->imp || obj->plane->w_activestate != 1) 
+			if(!obj->IsActived() || !obj->imp || objman_plane_inactive(obj)) 
 	//		if(CheckObjHeartbeat<1>(obj))
 			{
 				obj->Unlock();
@@ -314,7 +324,7 @@ public:
 			}
 			int rst = 0;
 			ASSERT(obj->plane);
-			rst = obj->imp->DispatchMessage(obj->plane,msg);
+			rst = objman_dispatch(obj, msg);
 			if(!rst)
 			{
 				ASSERT(obj->spinlock && "这里必须是上锁状态");

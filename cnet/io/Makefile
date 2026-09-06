@@ -26,6 +26,7 @@ all : $(EXES)
 #$(OUTEROBJS_M) $(OBJS_M)
 
 lib:  $(SHAREOBJ)
+	rm -f libgsio.a
 	$(AR) crs libgsio.a $(OUTEROBJS_M) $(OBJS_M)
 
 server: $(OUTEROBJS) $(OBJS) server.o
