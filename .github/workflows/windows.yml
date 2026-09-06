@@ -147,6 +147,8 @@ jobs:
 
       - name: Report failures to PR
         if: failure() && github.event.pull_request.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # The runner wraps scripts with -e; a failing grep must not kill this.
           set +e
@@ -176,19 +178,20 @@ jobs:
           okc=0; failc=0
           for f in ci-build-win/*.status; do
             [ -e "$f" ] || continue
-            line="$(cat "$f" | head -c 300)"
+            line="$(cat "$f" | head -c 120)"
             step="$(basename "$f" .status)"
             if printf '%s' "$line" | grep -q '^ok'; then okc=$((okc+1)); continue; fi
             failc=$((failc+1))
-            echo "::error::step $step: $line"
             log="ci-build-win/$step.log"
+            tu=""
+            ccerr=""
             if [ -f "$log" ]; then
-              tail -n 3 "$log" | while IFS= read -r line || [ -n "$line" ]; do
-                echo "::error::log $step: ${line:0:700}"
-              done
+              tu="$(tail -n 25 "$log" | grep -m1 -oE '[A-Za-z0-9_./-]+\.o\]? Error [0-9]+' | head -c 80)"
+              ccerr="$(grep -m1 -E 'error:|undefined|cannot |fatal|No such file' "$log" | head -c 550)"
             else
-              echo "::error::log $step: (no $log)"
+              tu="(no log)"
             fi
+            echo "::error::$step [$line] $tu :: ${ccerr:-no error line found}"
           done
           echo "::notice::steps ok=$okc failed=$failc"
           GH_BIN="$(command -v gh || command -v gh.exe || true)"
@@ -286,6 +289,8 @@ jobs:
 
       - name: Report failures to PR
         if: failure() && github.event.pull_request.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # The runner wraps scripts with -e; a failing grep must not kill this.
           set +e
@@ -315,19 +320,20 @@ jobs:
           okc=0; failc=0
           for f in ci-build-win/*.status; do
             [ -e "$f" ] || continue
-            line="$(cat "$f" | head -c 300)"
+            line="$(cat "$f" | head -c 120)"
             step="$(basename "$f" .status)"
             if printf '%s' "$line" | grep -q '^ok'; then okc=$((okc+1)); continue; fi
             failc=$((failc+1))
-            echo "::error::step $step: $line"
             log="ci-build-win/$step.log"
+            tu=""
+            ccerr=""
             if [ -f "$log" ]; then
-              tail -n 3 "$log" | while IFS= read -r line || [ -n "$line" ]; do
-                echo "::error::log $step: ${line:0:700}"
-              done
+              tu="$(tail -n 25 "$log" | grep -m1 -oE '[A-Za-z0-9_./-]+\.o\]? Error [0-9]+' | head -c 80)"
+              ccerr="$(grep -m1 -E 'error:|undefined|cannot |fatal|No such file' "$log" | head -c 550)"
             else
-              echo "::error::log $step: (no $log)"
+              tu="(no log)"
             fi
+            echo "::error::$step [$line] $tu :: ${ccerr:-no error line found}"
           done
           echo "::notice::steps ok=$okc failed=$failc"
           GH_BIN="$(command -v gh || command -v gh.exe || true)"
