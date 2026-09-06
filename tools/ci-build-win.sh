@@ -33,7 +33,7 @@ cd "$ROOT" || exit 1
 
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 4)}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist-win}"
-STATE="$ROOT/.ci-build-win"
+STATE="$ROOT/ci-build-win"
 TC="$STATE/tc"
 STRICT="${STRICT:-1}"
 

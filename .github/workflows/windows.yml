@@ -140,7 +140,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-logs-win-native-${{ github.run_number }}
-          path: .ci-build-win/
+          path: ci-build-win/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -217,6 +217,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-logs-win-zig-${{ github.run_number }}
-          path: .ci-build-win/
+          path: ci-build-win/
           if-no-files-found: ignore
           retention-days: 14
