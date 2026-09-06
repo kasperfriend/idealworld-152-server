@@ -94,9 +94,10 @@ EOF
 	cat > "$TC/ld" <<EOF
 #!/usr/bin/env bash
 exec "$ZIG" c++ -target x86_64-windows-gnu -D__MINGW_FORTIFY_LEVEL=0 \
-	"\$@" -lws2_32 -lwsock32 -lwinpthread -lbcrypt -lpsapi \
+	"\$@" \
 	"$STATE/winposix.a" "$STATE/winiconv.o" "$STATE/wsyslog.o" \
-	"$STATE/wrusage.o" "$STATE/wpmd5.o" "$STATE/wpcre.o" "$STATE/wpopenssl.o"
+	"$STATE/wrusage.o" "$STATE/wpmd5.o" "$STATE/wpcre.o" "$STATE/wpopenssl.o" \
+	-lws2_32 -lwinpthread -lbcrypt -lpsapi
 EOF
 	chmod +x "$TC/cc" "$TC/cxx" "$TC/ld"
 	# cskill's Makefilelib adds -finput-charset=ISO-8859-1/-fexec-charset=...
@@ -128,9 +129,10 @@ else
 	# zig-only OpenSSL stubs (native links the real -lcrypto).
 	cat > "$TC/ld" <<EOF
 #!/usr/bin/env bash
-exec "$WP_CXX" "\$@" -lws2_32 -lwsock32 -lwinpthread -lbcrypt -lpsapi \
+exec "$WP_CXX" "\$@" \
 	"$STATE/winposix.a" "$STATE/winiconv.o" "$STATE/wsyslog.o" \
-	"$STATE/wrusage.o" "$STATE/wpmd5.o" "$STATE/wpcre.o"
+	"$STATE/wrusage.o" \
+	-lws2_32 -lwinpthread -lbcrypt -lpsapi
 EOF
 	chmod +x "$TC/ld"
 	WP_LD="$TC/ld"
@@ -189,6 +191,8 @@ build_net_daemon() { # <stepname> <dir> <target> <extra defs>
 
 copy_pair() { # <src> <dst>
 	local src="$1" dst="$2"
+	# -o glinkd yields glinkd.exe on Windows; -o gamedbd.wdb stays as-is.
+	if [ ! -f "$src" ] && [ -f "$src.exe" ]; then src="$src.exe"; fi
 	if [ -f "$src" ]; then
 		cp -f "$src" "$DIST_DIR/$dst" && echo "  $(basename "$dst") <- $src"
 	else
