@@ -15,6 +15,7 @@
 #include "thread.h"
 #include <iostream>
 #include <unistd.h>
+#include <getopt.h>
 #include <time.h>
 #include "itimer.h"
 #include "deleteroletask.h"
@@ -28,6 +29,12 @@
 #include "serverattr.h"
 #include "stockexchange.h"
 #include "xmlversion.h"
+
+/* The Windows build driver overrides DEFINES wholesale, so __USER__ (passed
+ * via -D__USER__=... by the daemon Makefiles on Linux) may be undefined. */
+#ifndef __USER__
+#define __USER__ "unknown"
+#endif
 #include "referencemanager.h"
 #include "rewardmanager.h"
 #include "webtrademarket.h"
@@ -74,8 +81,7 @@ int main(int argc, char *argv[])
 		switch(opt)
 		{
 			case 'v':
-		printf("Compiled " __DATE__ " " __TIME__ "
-");
+				printf("Compiled By "__USER__ ", "__DATE__ " "__TIME__ "\n");
 				printf("%s\n", XMLVERSION);
 				exit(0);
 			default:

@@ -251,7 +251,9 @@ namespace Thread
 			sigaddset(&sigs, SIGUSR1);
 			sigaddset(&sigs, SIGUSR2);
 			sigaddset(&sigs, SIGHUP);
+#ifndef WIN32
 			pthread_sigmask(SIG_BLOCK, &sigs, NULL);
+#endif
 
 			while (true)
 			{

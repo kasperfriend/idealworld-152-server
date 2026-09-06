@@ -176,6 +176,13 @@ int main(int argn , char ** argv)
 		return rst;
 	}
 
+#ifdef WIN32
+	if(argn > 5)
+	{
+		__PRINTINFO("Windows cannot fork sibling servers; starting %s only."
+		              " Run one gs.exe per server instead.\n", servername);
+	}
+#else
 	if(argn >5)
 	{
 		do
@@ -217,6 +224,7 @@ int main(int argn , char ** argv)
 		}
 		while(0);
 	}
+#endif
 
 	if(g_mobile_server && strncmp(servername, mobile_prefix, strlen(mobile_prefix)) != 0
 			|| !g_mobile_server && strncmp(servername, mobile_prefix, strlen(mobile_prefix)) == 0)

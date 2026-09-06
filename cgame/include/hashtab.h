@@ -86,7 +86,17 @@ struct _hash_function
 	inline unsigned long operator()(unsigned short data) const {return data;}
 	inline unsigned long operator()(unsigned int data) const {return data;}
 	inline unsigned long operator()(unsigned long data) const {return data;}
-	inline unsigned long operator()(void *data) const {return (unsigned long)data;}
+	inline unsigned long operator()(void *data) const
+	{
+		uintptr_t v = (uintptr_t)data;
+#if defined(UINTPTR_MAX) && defined(ULONG_MAX) && (UINTPTR_MAX > ULONG_MAX)
+		/* LLP64 (Windows x86_64): pointers are wider than unsigned long,
+		 * so fold the high half in instead of dropping it. */
+		return (unsigned long)(v ^ (v >> 32));
+#else
+		return (unsigned long)v;
+#endif
+	}
 	inline unsigned long operator()(char *s) const
 	{
 		unsigned long h = 0;

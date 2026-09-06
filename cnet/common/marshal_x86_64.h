@@ -75,9 +75,12 @@ public:
 			pop_byte(l);
 			return byteorder_32(l);
 		}
-		unsigned long pop_byte_64() const
+		/* unsigned long long: pop_byte() moves sizeof(T) bytes, and on LLP64
+		 * (Windows x86_64) unsigned long is only 4 bytes, which would
+		 * corrupt the stream.  Identical to before on LP64/ILP32. */
+		unsigned long long pop_byte_64() const
 		{
-			unsigned long ll;
+			unsigned long long ll;
 			pop_byte(ll);
 			return byteorder_64(ll);
 		}
@@ -224,12 +227,22 @@ public:
 		OctetsStream& operator << (float x)              { return push_byte(byteorder_32(aliasing_cast<int>(x))); }
 		OctetsStream& operator << (double x)             { return push_byte(byteorder_64(aliasing_cast<unsigned long long>(x))); }
 		OctetsStream& operator << (const Marshal &x)     { return x.marshal(*this); }
-		OctetsStream& operator << (const Octets &x)  
+		OctetsStream& operator << (const Octets &x)
 		{
 			compact_uint32(x.size());
 			data.insert(data.end(), x.begin(), x.end());
 			return *this;
 		}
+#if defined(_WIN32) || defined(WIN32)
+		/* LLP64 overloads.  On Windows x86_64, long/unsigned long are 32-bit
+		 * and int64_t is long long, so without these every 'os << longval'
+		 * or 'os << sizeval' is ambiguous.  The wire format matches the
+		 * Linux x86_64 build: long marshals as 8 bytes (like int64_t there),
+		 * size_t/unsigned long long as 4 bytes (like size_t/unsigned long
+		 * there). */
+		OctetsStream& operator << (long x)               { return push_byte(byteorder_64((unsigned long long)x)); }
+		OctetsStream& operator << (unsigned long long x) { return push_byte(byteorder_32((unsigned int)x)); }
+#endif
 		template<typename T>
 		OctetsStream& operator << (const std::basic_string<T> &x)
 		{
@@ -356,6 +369,21 @@ public:
 			return *this;
 		}
 		*/
+#if defined(_WIN32) || defined(WIN32)
+		/* LLP64 counterparts of the << overloads above: long reads the same
+		 * 8 bytes the Linux x86_64 build writes, size_t/unsigned long long
+		 * the same 4 bytes. */
+		const OctetsStream& operator >> (const long &x) const
+		{
+			remove_const(x) = (long)pop_byte_64();
+			return *this;
+		}
+		const OctetsStream& operator >> (const unsigned long long &x) const
+		{
+			remove_const(x) = pop_byte_32();
+			return *this;
+		}
+#endif
 		const OctetsStream& operator >> (const float &x) const
 		{
 			unsigned int l = pop_byte_32();
@@ -364,7 +392,7 @@ public:
 		}
 		const OctetsStream& operator >> (const double &x) const
 		{
-			unsigned long ll = pop_byte_64();
+			unsigned long long ll = pop_byte_64();
 			remove_const(x) = aliasing_cast<double>(ll);
 			return *this;
 		}

@@ -111,10 +111,14 @@ public:
 		pthread_mutex_unlock(&locker_ionew);
 #endif
 		fdset.clear();
-		std::for_each(iomap.begin(), iomap.end(), std::ptr_fun(&UpdateEvent));
+		/* std::ptr_fun was removed from newer standard libraries; equivalent
+		 * lambdas work on every toolchain. */
+		std::for_each(iomap.begin(), iomap.end(),
+		              [](const IOMap::value_type &iopair){ UpdateEvent(iopair); });
 
-		if (poll(&fdset[0], fdset.size(), timeout) > 0)	
-			std::for_each(fdset.begin(), fdset.end(), std::ptr_fun(&TriggerEvent));
+		if (poll(&fdset[0], fdset.size(), timeout) > 0)
+			std::for_each(fdset.begin(), fdset.end(),
+			              [](const pollfd &fds){ TriggerEvent(fds); });
 #if defined _REENTRANT
 		pthread_mutex_unlock(&locker_poll);
 #endif

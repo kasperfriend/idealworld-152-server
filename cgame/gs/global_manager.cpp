@@ -408,6 +408,23 @@ global_world_manager::RestartProcess()
 		if(cs_index <=0) continue;
 		GMSV::SendDisconnect(cs_index,pPool[i].ID.id,pPool[i].cs_sid,0);
 	}
+#ifdef WIN32
+	/* No fork(): run the restart helper detached and return. */
+	{
+		STARTUPINFOA si;
+		PROCESS_INFORMATION pi;
+		memset(&si, 0, sizeof(si));
+		si.cb = sizeof(si);
+		memset(&pi, 0, sizeof(pi));
+		if (CreateProcessA(NULL, (LPSTR)_restart_shell.c_str(), NULL, NULL,
+		                     FALSE, DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+		                     NULL, NULL, &si, &pi))
+		{
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+		}
+	}
+#else
 	if(!fork())
 	{
 		for(int i =3;i < getdtablesize(); i ++)
@@ -417,6 +434,7 @@ global_world_manager::RestartProcess()
 		sleep(1);
 		system(_restart_shell.c_str());
 	}
+#endif
 }
 
 gplayer* 

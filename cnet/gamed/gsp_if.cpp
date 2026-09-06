@@ -1061,7 +1061,7 @@ void * autoWakeUp(void *)
 
 void * cmdDispatcher(void * tmp)
 {
-	int index = (int)tmp;
+	int index = (int)(intptr_t)tmp;
 	std::deque<user_cmd_t> tmpList;
 	int tustat_time = 0;
 	while(1)

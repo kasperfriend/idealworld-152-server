@@ -23,7 +23,7 @@ class Record
 	};
 	#pragma pack()
 	Layout	layout;
-	off_t	position;
+	long long	position;
 	bool	dirty;
 public:
 	typedef Key   key_type;

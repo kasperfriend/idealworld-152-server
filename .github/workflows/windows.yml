@@ -1,0 +1,222 @@
+name: Build Windows
+
+# Windows port of the server: every run compiles all eight daemons from source
+# (`./tools/ci-build-win.sh`, no prebuilt objects) and stages native .exe files.
+#
+# Two toolchain jobs:
+#   native - MSYS2 mingw64 gcc on windows-latest (the real product; links the
+#            real pcre/openssl import libraries).
+#   zig    - zig cross-compile (x86_64-windows-gnu) on ubuntu-latest.  Uses the
+#            win32/zigonly stubs for pcre/openssl, so it exercises every
+#            compile and link cheaply and catches Linux-isms.
+#
+# Runs automatically on pushes to the Windows branch and on pull requests
+# against main; a GitHub Release is only published for manual ("Run workflow")
+# runs of the native job.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      name_suffix:
+        description: "Optional suffix added to the release name (e.g. 'rc1')"
+        required: false
+        default: ""
+      strip_binaries:
+        description: "Strip debug info from the binaries before packaging"
+        type: boolean
+        required: false
+        default: false
+  push:
+    branches: [Windows]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native:
+    name: windows x86_64 (MSYS2 mingw64)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The only LFS objects in this repo are stale prebuilt binaries that the
+          # build regenerates from source, so do not pay for downloading them.
+          lfs: false
+          fetch-depth: 1
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: >-
+            make
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-pcre
+
+      - name: Show toolchain
+        run: |
+          uname -a
+          gcc --version | head -n1
+          g++ --version | head -n1
+          make --version | head -n1
+          pacman -Q mingw-w64-x86_64-gcc mingw-w64-x86_64-openssl mingw-w64-x86_64-pcre
+
+      - name: Build the server
+        env:
+          STRICT: "1"
+        run: ./tools/ci-build-win.sh
+
+      - name: Verify PE binaries
+        run: |
+          set -euo pipefail
+          file dist-win/bin/*.exe
+          file dist-win/bin/*.exe | grep -q 'PE32' || { echo 'binaries are not PE executables'; exit 1; }
+
+      - name: Strip binaries
+        if: ${{ inputs.strip_binaries }}
+        run: strip dist-win/bin/*.exe
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          SHA="${GITHUB_SHA:0:10}"
+          PKG="idealworld-152-server-windows-x86_64"
+          mkdir -p release
+          (cd dist-win && sha256sum bin/* lib/* MANIFEST.txt > SHA256SUMS.txt)
+          mv dist-win "$PKG"
+          tar -czf "release/$PKG.tar.gz" "$PKG"
+          # the executables are also published one by one so they can be grabbed
+          # without unpacking the archive
+          cp "$PKG"/bin/* release/
+          cp "$PKG"/MANIFEST.txt "$PKG"/SHA256SUMS.txt release/
+          cp RUNBOOK.md release/
+          {
+            echo "## idealworld-152 server (Windows) - build ${{ github.run_number }}"
+            echo
+            echo "Built from \`${GITHUB_SHA}\` on \`${RUNNER_NAME}\` by"
+            echo "[${{ github.workflow }} run ${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+            echo
+            echo "Everything in this release was compiled from the sources in this"
+            echo "repository with \`./tools/ci-build-win.sh\` (MSYS2 mingw64, no prebuilt objects)."
+            echo
+            echo "### Contents"
+            echo
+            echo "| archive | size |"
+            echo "| --- | --- |"
+            for f in release/*.tar.gz; do
+              echo "| \`$(basename \"$f\")\` | $(du -h \"$f\" | cut -f1) |"
+            done
+            echo
+            echo '```'
+            cat "$PKG"/MANIFEST.txt
+            echo '```'
+          } > release/RELEASE_NOTES.md
+          echo "### release assets" >> "$GITHUB_STEP_SUMMARY"
+          ls -lh release | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload dist artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-win-native-${{ github.run_number }}
+          path: release/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload build log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-win-native-${{ github.run_number }}
+          path: .ci-build-win/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: win-build-${{ github.run_number }}
+          name: >-
+            Windows binaries - build ${{ github.run_number }}${{
+              inputs.name_suffix && format(' {0}', inputs.name_suffix) || '' }}
+          body_path: release/RELEASE_NOTES.md
+          files: |
+            release/*.tar.gz
+            release/*.txt
+            release/RUNBOOK.md
+            release/glinkd.exe
+            release/gdeliveryd.exe
+            release/gauthd.exe
+            release/gfactiond.exe
+            release/gamedbd.exe
+            release/uniquenamed.exe
+            release/logservice.exe
+            release/gs.exe
+          prerelease: true
+          fail_on_unmatched_files: true
+
+  zig:
+    name: windows x86_64 (zig cross)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+          fetch-depth: 1
+
+      - name: Set up zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Show toolchain
+        run: |
+          uname -a
+          zig version
+          make --version | head -n1
+
+      - name: Build the server
+        env:
+          STRICT: "1"
+          ZIG: zig
+        run: ./tools/ci-build-win.sh
+
+      - name: Verify PE binaries
+        run: |
+          set -euo pipefail
+          file dist-win/bin/*.exe
+          file dist-win/bin/*.exe | grep -q 'PE32' || { echo 'binaries are not PE executables'; exit 1; }
+
+      - name: Upload dist artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-win-zig-${{ github.run_number }}
+          path: dist-win/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload build log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-win-zig-${{ github.run_number }}
+          path: .ci-build-win/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -9,6 +9,12 @@
 #include "accessdb.h"
 #include "xmlversion.h"
 
+/* The Windows build driver overrides DEFINES wholesale, so __USER__ (passed
+ * via -D__USER__=... by the daemon Makefiles on Linux) may be undefined. */
+#ifndef __USER__
+#define __USER__ "unknown"
+#endif
+
 using namespace GNET;
 
 class DbPolicy : public Thread::Pool::Policy
@@ -41,8 +47,7 @@ int main(int argc, char *argv[])
 {
 	if (argc < 2 || access(argv[1], R_OK) == -1 )
 	{
-		printf("Compiled " __DATE__ " " __TIME__ "
-");
+	printf("Compiled By "__USER__ ", "__DATE__ " "__TIME__ "\n");
 		printhelp( argv[0] );
 		exit(-1);
 	}

@@ -64,7 +64,9 @@ namespace GNET
 				pthread_detach( pthread_self() );
 				sigset_t sigs;
 				sigfillset(&sigs);
+#ifndef WIN32
 				pthread_sigmask(SIG_BLOCK, &sigs, NULL);
+#endif
 
 				std::vector<FriendExt_Need_Gain> tmpList;
 

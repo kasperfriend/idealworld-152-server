@@ -84,7 +84,7 @@ public:
 		LOG_TRACE("UserIdentityCache remove user %d", userid);
 	}
 	
-	bool UserIdentityCache::UpdateRoleCrsInfo(int userid, int new_roleid)
+	bool UpdateRoleCrsInfo(int userid, int new_roleid)
 	{
 		IdentityMap::iterator it = identity_map.find(userid);
 		if(it == identity_map.end()) return false;

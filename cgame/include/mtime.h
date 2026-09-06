@@ -12,7 +12,11 @@
 extern "C" {
 #endif
 
-#ifdef WIN32
+/* The hand declarations below are only for MSVC, which has neither
+ * <sys/time.h> nor <unistd.h>.  mingw-w64 and clang (this tree's Windows
+ * server toolchains) provide both headers, together with
+ * gettimeofday/usleep declarations that would clash with these. */
+#if defined(WIN32) && defined(_MSC_VER)
 
 struct timezone;
 int  gettimeofday(struct timeval *tv,struct timezone *tz);

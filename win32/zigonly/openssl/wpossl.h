@@ -26,7 +26,7 @@ typedef struct x509_req_st X509_REQ;
 typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
 
 #define NID_commonName 13
-#define NID_organizationalUnitName 65
+#define NID_organizationalUnitName 17
 
 #define X509_V_ERR_CERT_HAS_EXPIRED 10
 #define RSA_PKCS1_PADDING 1
@@ -36,6 +36,7 @@ EVP_PKEY *X509_get_pubkey(X509 *x);
 X509_NAME *X509_get_subject_name(const X509 *x);
 void X509_free(X509 *a);
 void EVP_PKEY_free(EVP_PKEY *p);
+int EVP_PKEY_size(EVP_PKEY *pkey);
 int X509_NAME_get_text_by_NID(X509_NAME *name, int nid, char *buf, int len);
 
 X509_STORE *X509_STORE_new(void);

@@ -12,7 +12,7 @@
 #include "../item/item_addon.h"
 #else	// Windows
 #include "exptypes.h"
-#include <Windows.h>
+#include <windows.h>
 
 namespace abase
 {

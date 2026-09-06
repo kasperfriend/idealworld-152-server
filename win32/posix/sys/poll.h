@@ -9,6 +9,7 @@
 #define _WP_SYS_POLL_H
 
 #include "winposix.h"
+#include <poll.h>
 
 #ifndef POLLIN
 #define POLLIN   0x0300
@@ -50,7 +51,7 @@ extern "C" {
 #endif
 #ifndef WP_HAS_POLL_DECL
 #define WP_HAS_POLL_DECL
-int poll(struct pollfd *fds, unsigned long nfds, int timeout);
+int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 #endif
 #ifdef __cplusplus
 }

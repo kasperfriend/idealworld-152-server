@@ -21,8 +21,8 @@ struct real_pcre
 	}
 };
 
-void *(*pcre_malloc)(size_t) = NULL;
-void (*pcre_free)(void *) = NULL;
+void *(*pcre_malloc)(size_t) = malloc;
+void (*pcre_free)(void *) = free;
 
 extern "C" {
 
@@ -100,9 +100,9 @@ namespace
 	};
 }
 
-extern "C" void wp_pcre_hook_init();
+extern "C" void wp_pcre_hook_init(void);
 
-void wp_pcre_hook_init()
+void wp_pcre_hook_init(void)
 {
 	static PcreHookInit init;
 	(void)init;

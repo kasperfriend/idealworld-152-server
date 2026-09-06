@@ -22,7 +22,14 @@
 
 #include <signal.h>
 #include <fcntl.h>
+#include <stdarg.h>
+#include <time.h>
+#include <pthread.h>
 #include <sys/time.h>
+#include <sys/un.h>
+#include <sys/uio.h>
+#include <poll.h>
+#include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -769,7 +776,7 @@ int select(int nfds, fd_set *r, fd_set *w, fd_set *e,
 	return rc;
 }
 
-int poll(struct pollfd *fds, unsigned long nfds, int timeout)
+int poll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
 	if (nfds == 0)
 	{
@@ -1142,21 +1149,53 @@ int sigaction(int sig, const struct sigaction *act, struct sigaction *oldact)
 struct tm * localtime_r(const time_t *t, struct tm *buf)
 {
 	if (!t || !buf) { errno = EINVAL; return NULL; }
-	/* MSVCRT's localtime() keeps its buffer in thread-local storage, which
-	 * matches localtime_r()'s per-thread guarantee well enough. */
-	struct tm *p = localtime(t);
-	if (!p) return NULL;
-	*buf = *p;
+	if (localtime_s(buf, t) != 0)
+		return NULL;
 	return buf;
 }
 
 struct tm * gmtime_r(const time_t *t, struct tm *buf)
 {
 	if (!t || !buf) { errno = EINVAL; return NULL; }
-	struct tm *p = gmtime(t);
-	if (!p) return NULL;
-	*buf = *p;
+	if (gmtime_s(buf, t) != 0)
+		return NULL;
 	return buf;
+}
+
+char *ctime_r(const time_t *t, char *buf)
+{
+	if (!t || !buf) { errno = EINVAL; return NULL; }
+	if (ctime_s(buf, 26, t) != 0)
+		return NULL;
+	return buf;
+}
+
+int clock_gettime(int clk_id, struct timespec *tp)
+{
+	if (!tp) { errno = EFAULT; return -1; }
+	if (clk_id == CLOCK_MONOTONIC)
+	{
+		static LARGE_INTEGER freq = { 0, 0 };
+		LARGE_INTEGER now;
+		long long total_ns;
+		if (freq.QuadPart == 0)
+			QueryPerformanceFrequency(&freq);
+		QueryPerformanceCounter(&now);
+		total_ns = now.QuadPart * 1000000000LL / freq.QuadPart;
+		tp->tv_sec = (long)(total_ns / 1000000000LL);
+		tp->tv_nsec = (long)(total_ns % 1000000000LL);
+		return 0;
+	}
+	{
+		FILETIME ft;
+		unsigned long long t;
+		GetSystemTimeAsFileTime(&ft);
+		t = (((unsigned long long)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+		t -= 116444736000000000ULL;  /* 1601 -> 1970 */
+		tp->tv_sec = (long)(t / 10000000ULL);
+		tp->tv_nsec = (long)((t % 10000000ULL) * 100);
+		return 0;
+	}
 }
 
 int gettimeofday(struct timeval *tv, void *tz)
@@ -1294,6 +1333,102 @@ int getitimer(int which, struct itimerval *value)
 
 /* ---- misc ---------------------------------------------------------------- */
 
+int fsync(int fd)
+{
+	HANDLE h;
+	if (g_is_pseudo(fd))
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	h = (HANDLE)_get_osfhandle(fd);
+	if (h == (HANDLE)-1)
+		return -1;
+	if (!FlushFileBuffers(h))
+	{
+		errno = EIO;
+		return -1;
+	}
+	return 0;
+}
+
+int alphasort(const struct dirent **a, const struct dirent **b)
+{
+	return strcmp((*a)->d_name, (*b)->d_name);
+}
+
+int scandir(const char *dir, struct dirent ***namelist,
+            int (*filter)(const struct dirent *),
+            int (*compar)(const struct dirent **, const struct dirent **))
+{
+	DIR *d;
+	struct dirent *ent;
+	struct dirent **list = NULL;
+	size_t count = 0, cap = 0;
+	if (!dir || !namelist) { errno = EFAULT; return -1; }
+	*namelist = NULL;
+	d = opendir(dir);
+	if (!d) return -1;
+	while ((ent = readdir(d)) != NULL)
+	{
+		struct dirent *copy;
+		if (filter && !filter(ent))
+			continue;
+		if (count == cap)
+		{
+			size_t ncap = cap ? cap * 2 : 32;
+			struct dirent **nlist = (struct dirent **)realloc(list, ncap * sizeof(*nlist));
+			if (!nlist) { closedir(d); errno = ENOMEM; return -1; }
+			list = nlist;
+			cap = ncap;
+		}
+		copy = (struct dirent *)malloc(sizeof(*copy));
+		if (!copy) { closedir(d); errno = ENOMEM; return -1; }
+		memcpy(copy, ent, sizeof(*copy));
+		list[count++] = copy;
+	}
+	closedir(d);
+	if (compar && count > 1)
+		qsort(list, count, sizeof(*list),
+		      (int (*)(const void *, const void *))compar);
+	*namelist = list;
+	return (int)count;
+}
+
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
+{
+	ssize_t total = 0;
+	int i;
+	if (iovcnt < 0) { errno = EINVAL; return -1; }
+	for (i = 0; i < iovcnt; i++)
+	{
+		ssize_t r = read(fd, iov[i].iov_base, (unsigned int)iov[i].iov_len);
+		if (r < 0)
+			return total ? total : -1;
+		total += r;
+		if ((size_t)r < iov[i].iov_len)
+			break;
+	}
+	return total;
+}
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
+{
+	ssize_t total = 0;
+	int i;
+	if (iovcnt < 0) { errno = EINVAL; return -1; }
+	for (i = 0; i < iovcnt; i++)
+	{
+		ssize_t r = write(fd, iov[i].iov_base, (unsigned int)iov[i].iov_len);
+		if (r < 0)
+			return total ? total : -1;
+		total += r;
+		if ((size_t)r < iov[i].iov_len)
+			break;
+	}
+	return total;
+}
+
 void *mmap(void *addr, size_t len, int prot, int flags, int fd, long long off)
 {
 	(void)addr; (void)len; (void)prot; (void)flags; (void)fd; (void)off;
@@ -1308,3 +1443,37 @@ int munmap(void *addr, size_t len)
 }
 
 } /* extern "C" */
+
+/* C++ linkage on purpose (see winposix.h): these overload the 1-argument CRT
+ * mkdir() and the 32-bit CRT ftruncate(). */
+int mkdir(const char *path, int mode)
+{
+	(void)mode; /* Windows has no POSIX permission bits */
+	if (!path) { errno = EFAULT; return -1; }
+	return _mkdir(path);
+}
+
+int ftruncate(int fd, long long len)
+{
+	HANDLE h;
+	LARGE_INTEGER pos, cur;
+	if (g_is_pseudo(fd))
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	if (len < 0) { errno = EINVAL; return -1; }
+	h = (HANDLE)_get_osfhandle(fd);
+	if (h == (HANDLE)-1)
+		return -1;
+	cur.QuadPart = 0;
+	if (!SetFilePointerEx(h, cur, &pos, FILE_CURRENT))
+		return -1;
+	cur.QuadPart = len;
+	if (!SetFilePointerEx(h, cur, NULL, FILE_BEGIN))
+		return -1;
+	if (!SetEndOfFile(h))
+		return -1;
+	SetFilePointerEx(h, pos, NULL, FILE_BEGIN);
+	return 0;
+}

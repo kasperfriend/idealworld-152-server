@@ -13,7 +13,7 @@
 using namespace std;
 
 #ifdef WIN32
-	#include "ExpTypes.h"
+	#include "exptypes.h"
 #elif defined LINUX
 	#include "../template/exptypes.h"
 #else

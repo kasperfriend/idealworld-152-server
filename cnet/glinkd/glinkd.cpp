@@ -7,11 +7,18 @@
 #include "thread.h"
 #include <iostream>
 #include <unistd.h>
+#include <getopt.h>
 #include <sys/resource.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include "xmlversion.h"
+
+/* The Windows build driver overrides DEFINES wholesale, so __USER__ (passed
+ * via -D__USER__=... by the daemon Makefiles on Linux) may be undefined. */
+#ifndef __USER__
+#define __USER__ "unknown"
+#endif
 
 using namespace GNET;
 void int_handler(int no)
@@ -33,8 +40,7 @@ int main(int argc, char *argv[])
 		switch(opt)
 		{
 			case 'v':
-		printf("Compiled " __DATE__ " " __TIME__ "
-");
+				printf("Compiled By "__USER__ ", "__DATE__ " "__TIME__ "\n");
 				printf("%s\n", XMLVERSION);
 				exit(0);
 			default:

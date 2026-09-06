@@ -12,13 +12,15 @@ DEFINES  += -DUSE_DB -DUSE_WDB -DUSE_LOGCLIENT -DMPPC_4WAY -DUSE_TRANSACTION -D_
 DEFINES += -D__USER__=\"$(USER)\"
 CFLAGS += -g -ggdb 
 
+CRYPTOLIB ?= -lcrypto
+
 OBJS = $(LOGOBJS) ../storage/storage.o ../storage/storagetool.o gamedbserver.o state.o stubs.o gamedbd.o gamedbmanager.o accessdb.o mergedb.o mergedb2.o selldataimage.o tranlog.o transman.o domaincmd.o utilfunction.o forbidpolicy.o abstractplayers.o tinyxml2.o
 CLEAN += *.o
 
 all : gamedbd.wdb
 
 gamedbd.wdb : $(OBJS) $(SHAREOBJ) $(SHARE_SOBJ) $(LOGSTUB) $(LOGOBJ)
-	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(SHAREOBJ) $(SHARE_SOBJ)  $(LOGSTUB) $(LOGOBJ) -lcrypto
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(SHAREOBJ) $(SHARE_SOBJ)  $(LOGSTUB) $(LOGOBJ) $(CRYPTOLIB)
 
 #cashstat: $(SHAREOBJ) $(SHARE_SOBJ) ../storage/storage.o statistic.cpp
 #	$(LD) $(LDFLAGS) -D_REENTRANT -o $@ statistic.cpp $(SHAREOBJ) $(SHARE_SOBJ) ../storage/storage.o -I$(INCLUDES) -DUSE_WDB
