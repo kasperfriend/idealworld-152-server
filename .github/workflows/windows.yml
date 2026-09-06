@@ -32,6 +32,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: build-windows-${{ github.ref }}
@@ -179,7 +180,15 @@ jobs:
           } > digest-full.md
           head -c 50000 digest-full.md > digest.md
           echo "digest bytes: $(wc -c < digest.md)"
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file digest.md
+          if gh pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
+            echo "digest posted as PR comment"
+          else
+            echo "PR comment post failed; falling back to step annotations"
+            grep -h -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" ci-build-win/*.log 2>/dev/null | head -n 10 | while IFS= read -r line; do
+              echo "::error::${line:0:1000}"
+            done
+            exit 1
+          fi
 
       - name: Publish GitHub Release
         if: github.event_name == 'workflow_dispatch'
@@ -293,4 +302,12 @@ jobs:
           } > digest-full.md
           head -c 50000 digest-full.md > digest.md
           echo "digest bytes: $(wc -c < digest.md)"
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file digest.md
+          if gh pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
+            echo "digest posted as PR comment"
+          else
+            echo "PR comment post failed; falling back to step annotations"
+            grep -h -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" ci-build-win/*.log 2>/dev/null | head -n 10 | while IFS= read -r line; do
+              echo "::error::${line:0:1000}"
+            done
+            exit 1
+          fi
