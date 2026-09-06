@@ -11,7 +11,7 @@ CO_DIR = $(TOP_SRCDIR)/common
 PERF_DIR = $(TOP_SRCDIR)/perf
 LOG_DIR = $(TOP_SRCDIR)/logclient
 SHM_DIR = $(TOP_SRCDIR)/shm
-PCRE_DIR = $(HOME)/pcre
+PCRE_DIR = /usr
 
 INCLUDES = -I. -I$(TOP_SRCDIR) -I$(IO_DIR) -I$(CO_DIR) -I$(PERF_DIR) -I$(TOP_SRCDIR)/rpc -I$(TOP_SRCDIR)/inl -I$(TOP_SRCDIR)/rpcdata -I$(PCRE_DIR)/include
 
@@ -29,24 +29,17 @@ ifeq ($(shell getconf LONG_BIT), 32)
 	ENV += -m32 -D__STDC_FORMAT_MACROS
 	HVERSION = i386
 else
-	ifneq ($(CPU),x86_64)
-		ENV += -m32 -march=i686 -D__STDC_FORMAT_MACROS
-		CFLAGS += $(ENV)
-		LDFLAGS += $(ENV)
-		HVERSION = i386
-	else
-		ENV += -m64 -D__STDC_FORMAT_MACROS
-		HVERSION = x86_64
-	endif
+	ENV += -m64 -D__STDC_FORMAT_MACROS
+	HVERSION = x86_64
 endif
 
 ifeq ($(SINGLE_THREAD),true)
-	DEFINES = -Wall -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 $(ENV) #-mcpu=pentium4
+	DEFINES = -Wall -fpermissive -Wno-narrowing -Wno-deprecated-declarations -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 $(ENV) -include cstring -include iconv.h -include climits -include ctime #-mcpu=pentium4
 	SHAREOBJ := $(SHARESRC:%.cpp=%.o)
 	LOGOBJ := $(LOGSRC:%.cpp=%.o) 
 	LOGSTUB := $(LOGSTUBSRC:%.cxx=%.o) 
 else
-	DEFINES = -Wall -D_GNU_SOURCE -pthread -D_REENTRANT_ -D_FILE_OFFSET_BITS=64 $(ENV) #-mcpu=pentium4 
+	DEFINES = -Wall -fpermissive -Wno-narrowing -Wno-deprecated-declarations -D_GNU_SOURCE -pthread -D_REENTRANT_ -D_FILE_OFFSET_BITS=64 $(ENV) -include cstring -include iconv.h -include climits -include ctime #-mcpu=pentium4 
 	LDFLAGS += -pthread 
 	SHAREOBJ := $(SHARESRC:%.cpp=%_m.o)
 	LOGOBJ := $(LOGSRC:%.cpp=%_m.o)

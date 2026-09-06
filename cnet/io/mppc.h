@@ -126,16 +126,12 @@ private:
 
 	static inline void putlit(unsigned int c)
 	{
-		register unsigned int bits;
-		__asm__ __volatile__ (
-			"xor    %1,%1           \n"
-			"test   $0x80,%2        \n"
-			"setne  %b1             \n"
-			"setne  %h0             \n"
-			"or     $8,%1           \n"
-			"and    $0x17f,%0       \n"
-			: "=&q"(c), "=q"(bits) : "0"(c)
-		);
+		// Equivalent of the historical i386 asm below it: move bit 7 of
+		// the literal into bit 8 and emit it using 8 or 9 bits. Plain C
+		// so it compiles on both 32-bit and 64-bit targets.
+		//   bits = 8 + ((c >> 7) & 1); c = (c & 0x7f) | (((c >> 7) & 1) << 8);
+		unsigned int bits = 8 + ((c >> 7) & 1);
+		c = (c & 0x7f) | (((c >> 7) & 1) << 8);
 		putbits(c, bits);
 	}
 

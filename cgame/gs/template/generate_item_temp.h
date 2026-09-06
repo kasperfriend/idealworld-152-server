@@ -147,11 +147,11 @@ int generate_item(unsigned int id, item_data ** item, size_t& size, RAND_CLASS c
 
 
 template <typename RAND_CLASS>
-inline void generate_template_addon(DATA_TYPE dt,float unique_prob,char * unique, char * produce, char * drop, char * addon_buf, unsigned int &addon_num,unsigned &addon_size, RAND_CLASS cls,element_data::GEN_ADDON_MODE normal_addon,int * sa_list)
+inline void generate_template_addon(DATA_TYPE dt,float unique_prob,char * unique, char * produce, char * drop, char * addon_buf, size_t &addon_num,size_t &addon_size, RAND_CLASS cls,element_data::GEN_ADDON_MODE normal_addon,int * sa_list)
 {
 	if(normal_addon == element_data::ADDON_LIST_DROP)
 	{
-		unsigned int un = 0;
+		size_t un = 0;
 		ASSERT(addon_size == 0);
 		if(element_data::Rand(0.f,1.f,cls,element_data::LOWER_TREND) < unique_prob)
 		{
@@ -164,7 +164,7 @@ inline void generate_template_addon(DATA_TYPE dt,float unique_prob,char * unique
 	}
 	else if(normal_addon == element_data::ADDON_LIST_PRODUCE)
 	{
-		unsigned int un = 0;
+		size_t un = 0;
 		ASSERT(addon_size == 0);
 		if(element_data::Rand(0.f,1.f,cls,element_data::LOWER_TREND) < unique_prob)
 		{
@@ -221,7 +221,7 @@ int generate_weapon(unsigned int id, ID_SPACE idspace, char ** data, size_t& siz
 	
 	// 随机addons
 	char addon_buf[ELEMENTDATAMAN_MAX_NUM_ADDONS*sizeof(_addon)];
-	unsigned int addon_num = element_data::RandSelect(&(ess->probability_addon_num0),sizeof(float), 6, cls,element_data::LOWER_TREND);	//属性表条目的数目
+	size_t addon_num = element_data::RandSelect(&(ess->probability_addon_num0),sizeof(float), 6, cls,element_data::LOWER_TREND);	//属性表条目的数目
 	
 	size_t addon_size = 0;
 	if(ess->fixed_props)
@@ -421,7 +421,7 @@ int generate_armor(unsigned int id, ID_SPACE idspace, char ** data, size_t& size
 	
 	// 随机addons
 	char addon_buf[ELEMENTDATAMAN_MAX_NUM_ADDONS*sizeof(_addon)];
-	unsigned int addon_num = element_data::RandSelect(&(ess->probability_addon_num0),sizeof(float), 5, cls,element_data::LOWER_TREND);	//属性表条目的数目
+	size_t addon_num = element_data::RandSelect(&(ess->probability_addon_num0),sizeof(float), 5, cls,element_data::LOWER_TREND);	//属性表条目的数目
 
 	size_t addon_size = 0;
 	if(ess->fixed_props)
@@ -557,7 +557,7 @@ int generate_projectile(unsigned int id, ID_SPACE idspace, char ** data, size_t&
 	// 无孔洞
 	// 固定addons 4个
 	char addon_buf[ELEMENTDATAMAN_MAX_NUM_ADDONS*sizeof(_addon)];
-	unsigned int addon_num = 4;		//属性表条目的数目固定 4
+	size_t addon_num = 4;		//属性表条目的数目固定 4
 
 	size_t addon_size = generate_equipment_addon_buffer_2(DT_PROJECTILE_ESSENCE, (int*)&(ess->id_addon0),sizeof(int), 4, addon_buf,addon_num);
 	size += addon_size;
@@ -698,7 +698,7 @@ int generate_decoration(unsigned int id, ID_SPACE idspace, char ** data, size_t&
 	
 	// 随机addons
 	char addon_buf[ELEMENTDATAMAN_MAX_NUM_ADDONS*sizeof(_addon)];
-	unsigned int addon_num = element_data::RandSelect(&(ess->probability_addon_num0),sizeof(float), 5,cls,element_data::LOWER_TREND);	//属性表条目的数目
+	size_t addon_num = element_data::RandSelect(&(ess->probability_addon_num0),sizeof(float), 5,cls,element_data::LOWER_TREND);	//属性表条目的数目
 
 	size_t addon_size = 0;
 	if(ess->fixed_props)
@@ -2150,7 +2150,7 @@ int generate_bible(unsigned int id, ID_SPACE idspace, char ** data, size_t& size
 
 	// 随机addons
 	char addon_buf[ELEMENTDATAMAN_MAX_NUM_ADDONS*sizeof(_addon)];
-	unsigned int addon_num = 10;
+	size_t addon_num = 10;
 	size_t addon_size = 0;
 	addon_size = generate_equipment_addon_buffer_2(DT_BIBLE_ESSENCE, (int*)ess->id_addons, sizeof(int),addon_num, addon_buf,addon_num);
 	size += sizeof(int);

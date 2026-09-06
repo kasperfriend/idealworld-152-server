@@ -20,6 +20,8 @@
 #endif
 
 namespace abase{
+template <class _Key, class _Value, class _HashFunc, class _Allocator> class hash_map;
+template <class _Key, class _Value, class _HashFunc, class _Allocator> bool operator==(const hash_map<_Key,_Value,_HashFunc,_Allocator>&, const hash_map<_Key,_Value,_HashFunc,_Allocator>&);
 template <class _Key, class _Value, class _HashFunc = _hash_function, class _Allocator = default_alloc>
 class hash_map
 {
@@ -77,7 +79,7 @@ public:
 	size_type max_bucket_count() const { return _M_ht.max_bucket_count(); }
 	size_type elems_in_bucket(size_type __n) const { return _M_ht.elems_in_bucket(__n); }
 
-	friend bool operator==<_Key,_Value,_HashFunc,_Allocator>(const hash_map&, const hash_map&);
+	friend bool operator==<>(const hash_map&, const hash_map&);
 };
 
 template <class _Key, class _Value, class _HashFunc,class _Allocator>

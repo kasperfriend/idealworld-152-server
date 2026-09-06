@@ -1,5 +1,7 @@
 #include "ASSERT.h"
 #include <stdlib.h>
+#include <cstring>
+#include <string.h>
 #include <stdio.h>
 #include <algorithm>
 
@@ -441,7 +443,7 @@ public:
 				size2 += node._Ap->total_count() * i;
 			}
 		}
-		printf("TOL:%u/%u\n",size,size2);
+		printf("TOL:%zu/%zu\n",size,size2);
 		printf("INSIDE:1024+(allocated:%5d)\n",_inside_counter);
 		printf("OTR:1024+(allocated:%5d)\n",_other_counter);
 	}
@@ -458,7 +460,7 @@ public:
 			printf("%3d:%6d(alloced:%5d)\n",index, i + MAX_SIZE,counter);
 			total += (i+MAX_SIZE)*counter;
 		}
-		printf("TOL:%u\n",total);
+		printf("TOL:%zu\n",total);
 	}
 };
 
@@ -494,7 +496,7 @@ public:
 		if(size <= threshold)
 			return fast_allocator::free(ptr,size);
 		else
-			return fast_allocator::raw_alloc(ptr);
+			return fast_allocator::raw_free(ptr);
 	}
 };
 

@@ -1,5 +1,6 @@
 
 #include "common/types.h"
+#include <cstring>
 #include "obj_interface.h"
 
 #include "filter.h"

@@ -306,7 +306,7 @@ public:
 	bool erase(const key_type &__key);
 	iterator erase(const iterator& __it);
 	size_type bucket_count() const { return _buckets.size(); }	
-	size_type max_bucket_count() const {return __stl_prime_list[(int)__stl_num_primes - 1]; } 
+	size_type max_bucket_count() const {return __abase_prime_list[(int)__abase_num_primes - 1]; } 
 
 	iterator find(const key_type& __key) 
 	{

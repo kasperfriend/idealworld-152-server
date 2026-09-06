@@ -4,6 +4,7 @@
 #include <set>
 #include <timer.h>
 #include "object.h"
+#include <common/message.h>
 
 /*
 template <int name> bool CheckObjHeartbeat(gobject *obj);
@@ -19,6 +20,8 @@ template <> bool CheckObjHeartbeat<1>(gobject * obj)
 */
 
 
+template<int foo> struct world_depend { typedef world type; };
+template<int foo> struct world_manager_depend { typedef world_manager type; };
 template <typename T>
 struct obj_manager_basic
 {
@@ -453,7 +456,7 @@ public:
 		info.faction = ent.faction;
 		info.hp = ent.hp;
 		info.mp = 0;
-		info.state = ent.state?world::QUERY_OBJECT_STATE_ZOMBIE:world::QUERY_OBJECT_STATE_ACTIVE;
+		info.state = ent.state?1:0; // world::QUERY_OBJECT_STATE_ZOMBIE/ACTIVE
 		info.max_hp = ent.hp;
 		info.invisible_degree = 0;
 		info.anti_invisible_degree = 0;
@@ -479,7 +482,7 @@ public:
 	}
 
 	template<int foo>
-	static void SendAppearMsg(world *pPlane,gnpc* pNPC,slice * pPiece)
+	static void SendAppearMsg(typename world_depend<foo>::type *pPlane,gnpc* pNPC,slice * pPiece)
 	{
 		object_appear app;
 		app.body_size = pNPC->body_size;
@@ -488,7 +491,7 @@ public:
 		app.level= pNPC->base_info.level;
 		app.hp= pNPC->base_info.hp;
 		app.state = pNPC->IsZombie();
-		app.where = world_manager::GetWorldIndex();
+		app.where = world_manager_depend<foo>::type::GetWorldIndex();
 		MSG msg;
 		BuildMessage(msg,GM_MSG_EXTERN_OBJECT_APPEAR,XID(GM_TYPE_BROADCAST,-1),pNPC->ID,
 				pNPC->pos,0,&app,sizeof(app));
@@ -496,7 +499,7 @@ public:
 	}
 
 	template<int foo>
-	static void SendAppearMsg(world *pPlane,gmatter* pMatter,slice * pPiece)
+	static void SendAppearMsg(typename world_depend<foo>::type *pPlane,gmatter* pMatter,slice * pPiece)
 	{
 		object_appear app;
 		app.body_size = pMatter->body_size;
@@ -505,7 +508,7 @@ public:
 		app.level= 0;
 		app.hp= 0;
 		app.state = 0;
-		app.where = world_manager::GetWorldIndex();
+		app.where = world_manager_depend<foo>::type::GetWorldIndex();
 		MSG msg;
 		BuildMessage(msg,GM_MSG_EXTERN_OBJECT_APPEAR,XID(GM_TYPE_BROADCAST,-1),pMatter->ID,
 				pMatter->pos,0,&app,sizeof(app));
@@ -513,7 +516,7 @@ public:
 	}
 	
 	template<int foo>
-	static void SendAppearMsg(world *pPlane, gplayer* pPlayer,slice * pPiece)
+	static void SendAppearMsg(typename world_depend<foo>::type *pPlane, gplayer* pPlayer,slice * pPiece)
 	{
 		object_appear app;
 		app.body_size = pPlayer->body_size;
@@ -522,7 +525,7 @@ public:
 		app.level= pPlayer->base_info.level;
 		app.hp= pPlayer->base_info.hp;
 		app.state = pPlayer->IsZombie();
-		app.where = world_manager::GetWorldIndex();
+		app.where = world_manager_depend<foo>::type::GetWorldIndex();
 		MSG msg;
 		BuildMessage(msg,GM_MSG_EXTERN_OBJECT_APPEAR,XID(GM_TYPE_BROADCAST,-1),pPlayer->ID,
 				pPlayer->pos,0,&app,sizeof(app));
@@ -530,7 +533,7 @@ public:
 	}
 
 	template<int foo>
-	static void SendDisappearMsg(world *pPlane,gobject* pObj,slice * pPiece)
+	static void SendDisappearMsg(typename world_depend<foo>::type *pPlane,gobject* pObj,slice * pPiece)
 	{
 		MSG msg;
 		BuildMessage(msg,GM_MSG_EXTERN_OBJECT_DISAPPEAR,XID(GM_TYPE_BROADCAST,-1),pObj->ID,
@@ -539,7 +542,7 @@ public:
 	}
 
 	template<int foo>
-	static void SendRefreshMsg(world *pPlane,gobject * pObj, int hp,slice * pPiece)
+	static void SendRefreshMsg(typename world_depend<foo>::type *pPlane,gobject * pObj, int hp,slice * pPiece)
 	{
 		MSG msg;
 		BuildMessage(msg,GM_MSG_EXTERN_OBJECT_REFRESH,XID(GM_TYPE_BROADCAST,-1),pObj->ID,

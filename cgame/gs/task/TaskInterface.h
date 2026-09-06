@@ -98,7 +98,14 @@
 #define TASK_ACTIVE_LIST_HEADER_LEN		8
 #define TASK_ACTIVE_LIST_MAX_LEN		175
 #define TASK_FINISHED_LIST_MAX_LEN		2040
+// On LP64/LLP64 the task entries grow (8-byte unsigned long / pointers in
+// pack(1) structs), so the per-entry footprint doubles. 32-bit layout and
+// database format are unchanged.
+#if defined(__LP64__) || defined(_WIN64)
+#define TASK_DATA_BUF_MAX_LEN			64
+#else
 #define TASK_DATA_BUF_MAX_LEN			32
+#endif
 #define TASK_FINISH_TIME_MAX_LEN		1700
 #define TASK_FINISH_COUNT_MAX_LEN		730
 
@@ -116,9 +123,18 @@ static const float	TASK_STORAGE_WHELL_SCALE = 10000.f;
 // 任务全局数据大小
 #define TASK_GLOBAL_DATA_SIZE			256
 // 任务完成时间
+#if defined(__LP64__) || defined(_WIN64)
+// 64-bit: header(2) + 1700 * entry(ushort + 8-byte time = 10)
+#define TASK_FINISH_TIME_LIST_BUF_SIZE	(TASK_FINISH_TIME_MAX_LEN * 10 + 2)
+#else
 #define TASK_FINISH_TIME_LIST_BUF_SIZE	10240
+#endif
 //任务完成次数
+#if defined(__LP64__) || defined(_WIN64)
+#define TASK_FINISH_COUNT_LIST_BUF_SIZE	(TASK_FINISH_COUNT_MAX_LEN * 26 + 2)
+#else
 #define TASK_FINISH_COUNT_LIST_BUF_SIZE	10240
+#endif
 // 库任务
 #define TASK_STORAGE_LIST_BUF_SIZE		1024
 

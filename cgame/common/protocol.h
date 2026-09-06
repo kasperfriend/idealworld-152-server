@@ -1882,7 +1882,7 @@ namespace S2C
 			single_data_header header;
 			int oid;
 			unsigned short scount;
-			unsigned short state[];
+			unsigned short state[1];
 			unsigned short pcount;
 			int param[];
 		};
@@ -3751,7 +3751,7 @@ namespace S2C
 			int roleid;
 			int titlescount;  // 称号个数
 			int expirecount;
-			unsigned short titles[];   // 已获得称号vec
+			unsigned short titles[1];   // 已获得称号vec
 			char data[];    //  pair<unsigned short, int>  vec
 		};
 
@@ -3956,11 +3956,11 @@ namespace S2C
 			};
 
 			unsigned int defence_rank_count;
-			score_rank_entry defence_ranks[];
+			score_rank_entry defence_ranks[1];
 			unsigned int defence_death_count;
-			death_entry defence_death_list[];
+			death_entry defence_death_list[1];
 			unsigned int offense_rank_count;
-			score_rank_entry offense_ranks[];
+			score_rank_entry offense_ranks[1];
 			unsigned int offense_death_count;
 			death_entry offense_death_list[];
 		};

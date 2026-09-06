@@ -178,7 +178,7 @@ protected:
 		{
 			if(_team.member_list[i].id == id) return _team.member_list + i;
 		}
-		return false;
+		return nullptr;
 	}
 
 

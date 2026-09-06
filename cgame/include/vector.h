@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <new>
 
+#include <stdint.h>
+#include <cstdint>
 #ifndef __ABASE_VECTOR_H__
 #define __ABASE_VECTOR_H__
 
@@ -400,10 +402,10 @@ template class vector<void*,default_alloc>;
 template <class Ty,class _Allocator>
 class vector<Ty*,_Allocator>
 {
-	typedef vector<int,_Allocator>  ptr_list;
+	typedef vector<intptr_t,_Allocator>  ptr_list;
 	ptr_list __ivector;
 	typedef Ty * value_type; 
-	typedef int  inn_value_type;
+	typedef intptr_t inn_value_type;
 	typedef typename ptr_list::iterator inn_iterator;
 public:
 	typedef value_type * iterator;

@@ -13,6 +13,7 @@
 #include <arandomgen.h>
 #include <common/protocol.h>
 #include <glog.h>
+extern abase::timer g_timer;
 #include "sfilterdef.h"
 #include "moving_action_env.h"
 
