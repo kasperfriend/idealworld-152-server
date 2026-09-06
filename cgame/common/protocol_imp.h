@@ -26,17 +26,7 @@ namespace  S2C
 		
 		template <typename CMD>
 		struct Make;
-
-		template <>
-		struct Make<single_data_header>
-		{
-			template <typename WRAPPER>
-			static WRAPPER & From(WRAPPER & wrapper,int command)
-			{
-				return wrapper <<(unsigned short)command;
-			}
-		};
-
+		
 		template <>
 		struct Make<multi_data_header>
 		{
@@ -47,7 +37,163 @@ namespace  S2C
 			}
 		};
 		
-		template <>
+				template<typename T, typename GA = gactive_object>
+		inline unsigned int MakeObjectState(T * pObject)
+		{
+			unsigned int state = 0;
+			if(pObject->IsZombie()) state = GA::STATE_ZOMBIE;
+			if(pObject->extend_state || pObject->extend_state2 || pObject->extend_state3 || pObject->extend_state4 || pObject->extend_state5 || pObject->extend_state6) state |= GA::STATE_EXTEND_PROPERTY;
+			if(pObject->effect_count) state |= GA::STATE_EFFECT;
+			return state;
+		}
+
+
+		template <typename WRAPPER, typename GA = gactive_object>
+		inline WRAPPER & MakeNPCExtendState(WRAPPER & ar, gnpc * pObject,unsigned int state)
+		{
+			if(state & GA::STATE_EXTEND_PROPERTY)
+			{
+				ar << pObject->extend_state << pObject->extend_state2 << pObject->extend_state3 << pObject->extend_state4 << pObject->extend_state5 << pObject->extend_state6;
+			}
+			if(state & GA::STATE_NPC_PET)
+			{
+				ar << pObject->master_id;
+			}
+			if(state & GA::STATE_NPC_NAME)
+			{
+				unsigned char name_size = pObject->name_size;
+				if(name_size >= sizeof(pObject->npc_name)) name_size = sizeof(pObject->npc_name);
+				ar << name_size;
+				ar.push_back(pObject->npc_name,name_size);
+			}
+			if(state & GA::STATE_MULTIOBJ_EFFECT)
+			{
+				int count = pObject->multiobj_effect_count;
+				ar << count;
+				for(int i=0; i<count; i++)
+				{
+					ar << pObject->multiobj_effect_list[i].target << pObject->multiobj_effect_list[i].type;
+				}
+			}
+			if(state & GA::STATE_NPC_MAFIA)
+			{
+				ar << pObject->mafia_id;
+			}
+			return ar;
+		}
+
+		template <typename WRAPPER, typename GA = gactive_object>
+		inline WRAPPER & MakePlayerExtendState(WRAPPER & ar, gplayer* pPlayer,unsigned int state,unsigned int state2)
+		{
+			if(state & GA::STATE_ADV_MODE)
+			{
+				ar << pPlayer->adv_data1 << pPlayer->adv_data2;
+			}
+
+			if(state & GA::STATE_SHAPE)
+			{
+				ar << pPlayer->shape_form;
+			}
+			if(state & GA::STATE_EMOTE)
+			{
+				ar << pPlayer->emote_form;
+			}
+			if(state & GA::STATE_EXTEND_PROPERTY)
+			{
+				ar << pPlayer->extend_state << pPlayer->extend_state2 << pPlayer->extend_state3 << pPlayer->extend_state4 << pPlayer->extend_state5 << pPlayer->extend_state6;
+			}
+			if(state & GA::STATE_MAFIA)
+			{
+				ar << pPlayer->id_mafia << pPlayer->rank_mafia;
+			}
+
+			if(state & GA::STATE_MARKET)
+			{
+				ar << pPlayer->market_id;
+			}
+
+			if(state & GA::STATE_EFFECT)
+			{
+				unsigned char count = pPlayer->effect_count;
+				ar << count;
+				if(count)
+				{
+					ar.push_back(pPlayer->effect_list, sizeof(short)* count);
+				}
+			}
+
+			if(state & GA::STATE_PARIAH)
+			{
+				ar << (char) pPlayer->pariah_state;
+			}
+
+			if(state & GA::STATE_MOUNT)
+			{
+				ar << (unsigned short) pPlayer->mount_color;
+				ar << (int) pPlayer->mount_id;
+			}
+
+			if(state & GA::STATE_IN_BIND)
+			{
+				ar << (char) pPlayer->bind_type;
+				ar << (int) pPlayer->bind_target;
+			}
+
+			if(state & GA::STATE_SPOUSE)
+			{
+				ar << (int)pPlayer->spouse_id;
+			}
+
+			if(state & GA::STATE_EQUIPDISABLED)
+			{
+				ar << pPlayer->disabled_equip_mask;
+			}
+
+			if(state & GA::STATE_PLAYERFORCE)
+			{
+				ar << pPlayer->force_id;
+			}
+
+			if(state & GA::STATE_MULTIOBJ_EFFECT)
+			{
+				int count = pPlayer->multiobj_effect_count;
+				ar << count;
+				for(int i=0; i<count; i++)
+				{
+					ar << pPlayer->multiobj_effect_list[i].target << pPlayer->multiobj_effect_list[i].type;
+				}
+			}
+			
+			if(state & GA::STATE_COUNTRY)
+			{
+				ar << pPlayer->country_id;	
+			}
+
+			if(state2 & GA::STATE_TITLE)
+			{
+				ar << pPlayer->title_id;
+			}
+
+			if(state2 & GA::STATE_REINCARNATION)
+			{
+				ar << pPlayer->reincarnation_times;
+			}
+
+			if(state2 & GA::STATE_REALMLEVEL)
+			{
+				ar << pPlayer->realmlevel;
+			}
+
+			if(state2 & GA::STATE_MAFIA_PVP_MASK)
+			{
+				ar << pPlayer->mafia_pvp_mask;
+			}
+
+			return ar;
+		}
+		
+
+template <>
 		struct Make<INFO::self_info_1>
 		{
 			template <typename WRAPPER>
@@ -62,233 +208,21 @@ namespace  S2C
 			}
 		};
 
+		template <> struct Make<INFO::player_info_1>;
+		template <> struct Make<INFO::npc_info>;
+		template <> struct Make<INFO::matter_info_1>;
+		template <> struct Make<INFO::move_info>;
+
 		template <>
-		struct Make<CMD::self_info_1>
+		struct Make<single_data_header>
 		{
 			template <typename WRAPPER>
-			static WRAPPER & From(WRAPPER & wrapper,gplayer *pPlayer,int exp,int sp)
+			static WRAPPER & From(WRAPPER & wrapper,int command)
 			{
-				Make<single_data_header>::From(wrapper,SELF_INFO_1);
-				return Make<INFO::self_info_1>::From(wrapper,pPlayer,exp,sp);
+				return wrapper <<(unsigned short)command;
 			}
 		};
-
-		template <>
-		struct Make<CMD::player_enter_slice>
-		{
-			template <typename WRAPPER>
-			static WRAPPER & From(WRAPPER & wrapper,gplayer* pPlayer,const A3DVECTOR & pos)
-			{
-				Make<single_data_header>::From(wrapper,PLAYER_ENTER_SLICE);
-				Make<INFO::player_info_1>::From(wrapper,pPlayer,pos);
-				//这里要注意，不能在隐身状态下使用
-				ASSERT(pPlayer->gm_invisible == false);
-				return wrapper;
-			}
-		};
-
-		template <>
-		struct Make<CMD::npc_enter_slice>
-		{
-			template <typename WRAPPER>
-			static WRAPPER & From(WRAPPER & wrapper,gnpc * pNPC,const A3DVECTOR & pos)
-			{
-				Make<single_data_header>::From(wrapper,NPC_ENTER_SLICE);
-				return Make<INFO::npc_info>::From(wrapper,pNPC,pos);
-			}
-		};
-
-		template <>
-		struct Make<CMD::npc_enter_world>
-		{
-			template <typename WRAPPER>
-			static WRAPPER & From(WRAPPER & wrapper,gnpc * pNPC)
-			{
-				Make<single_data_header>::From(wrapper,NPC_ENTER_WORLD);
-				return Make<INFO::npc_info>::From(wrapper,pNPC);
-			}
-		};
-
-
-		template <>
-		struct Make<CMD::leave_slice>
-		{
-			template <typename WRAPPER>
-			static WRAPPER & From(WRAPPER & wrapper,gobject * pObject)
-			{
-				Make<single_data_header>::From(wrapper,OBJECT_LEAVE_SLICE);
-				return wrapper << pObject->ID.id;
-			}
-		};
-
-		template <>
-		struct Make<CMD::notify_pos>
-		{
-			template <typename WRAPPER, typename KEY>
-			static WRAPPER & From(WRAPPER & wrapper,const A3DVECTOR & pos, int tag, const KEY & key)
-			{
-				Make<single_data_header>::From(wrapper,OBJECT_NOTIFY_POS);
-				return wrapper <<  pos << tag << key.key1;
-			}
-		};
-
-		template<typename T>
-		inline unsigned int MakeObjectState(T * pObject)
-		{
-			unsigned int state = 0;
-			if(pObject->IsZombie()) state = gactive_object::STATE_ZOMBIE;
-			if(pObject->extend_state || pObject->extend_state2 || pObject->extend_state3 || pObject->extend_state4 || pObject->extend_state5 || pObject->extend_state6) state |= gactive_object::STATE_EXTEND_PROPERTY;
-			if(pObject->effect_count) state |= gactive_object::STATE_EFFECT;
-			return state;
-		}
-
-
-		template <typename WRAPPER>
-		inline WRAPPER & MakeNPCExtendState(WRAPPER & ar, gnpc * pObject,unsigned int state)
-		{
-			if(state & gactive_object::STATE_EXTEND_PROPERTY)
-			{
-				ar << pObject->extend_state << pObject->extend_state2 << pObject->extend_state3 << pObject->extend_state4 << pObject->extend_state5 << pObject->extend_state6;
-			}
-			if(state & gactive_object::STATE_NPC_PET)
-			{
-				ar << pObject->master_id;
-			}
-			if(state & gactive_object::STATE_NPC_NAME)
-			{
-				unsigned char name_size = pObject->name_size;
-				if(name_size >= sizeof(pObject->npc_name)) name_size = sizeof(pObject->npc_name);
-				ar << name_size;
-				ar.push_back(pObject->npc_name,name_size);
-			}
-			if(state & gactive_object::STATE_MULTIOBJ_EFFECT)
-			{
-				int count = pObject->multiobj_effect_count;
-				ar << count;
-				for(int i=0; i<count; i++)
-				{
-					ar << pObject->multiobj_effect_list[i].target << pObject->multiobj_effect_list[i].type;
-				}
-			}
-			if(state & gactive_object::STATE_NPC_MAFIA)
-			{
-				ar << pObject->mafia_id;
-			}
-			return ar;
-		}
-
-		template <typename WRAPPER>
-		inline WRAPPER & MakePlayerExtendState(WRAPPER & ar, gplayer* pPlayer,unsigned int state,unsigned int state2)
-		{
-			if(state & gactive_object::STATE_ADV_MODE)
-			{
-				ar << pPlayer->adv_data1 << pPlayer->adv_data2;
-			}
-
-			if(state & gactive_object::STATE_SHAPE)
-			{
-				ar << pPlayer->shape_form;
-			}
-			if(state & gactive_object::STATE_EMOTE)
-			{
-				ar << pPlayer->emote_form;
-			}
-			if(state & gactive_object::STATE_EXTEND_PROPERTY)
-			{
-				ar << pPlayer->extend_state << pPlayer->extend_state2 << pPlayer->extend_state3 << pPlayer->extend_state4 << pPlayer->extend_state5 << pPlayer->extend_state6;
-			}
-			if(state & gactive_object::STATE_MAFIA)
-			{
-				ar << pPlayer->id_mafia << pPlayer->rank_mafia;
-			}
-
-			if(state & gactive_object::STATE_MARKET)
-			{
-				ar << pPlayer->market_id;
-			}
-
-			if(state & gactive_object::STATE_EFFECT)
-			{
-				unsigned char count = pPlayer->effect_count;
-				ar << count;
-				if(count)
-				{
-					ar.push_back(pPlayer->effect_list, sizeof(short)* count);
-				}
-			}
-
-			if(state & gactive_object::STATE_PARIAH)
-			{
-				ar << (char) pPlayer->pariah_state;
-			}
-
-			if(state & gactive_object::STATE_MOUNT)
-			{
-				ar << (unsigned short) pPlayer->mount_color;
-				ar << (int) pPlayer->mount_id;
-			}
-
-			if(state & gactive_object::STATE_IN_BIND)
-			{
-				ar << (char) pPlayer->bind_type;
-				ar << (int) pPlayer->bind_target;
-			}
-
-			if(state & gactive_object::STATE_SPOUSE)
-			{
-				ar << (int)pPlayer->spouse_id;
-			}
-
-			if(state & gactive_object::STATE_EQUIPDISABLED)
-			{
-				ar << pPlayer->disabled_equip_mask;
-			}
-
-			if(state & gactive_object::STATE_PLAYERFORCE)
-			{
-				ar << pPlayer->force_id;
-			}
-
-			if(state & gactive_object::STATE_MULTIOBJ_EFFECT)
-			{
-				int count = pPlayer->multiobj_effect_count;
-				ar << count;
-				for(int i=0; i<count; i++)
-				{
-					ar << pPlayer->multiobj_effect_list[i].target << pPlayer->multiobj_effect_list[i].type;
-				}
-			}
-			
-			if(state & gactive_object::STATE_COUNTRY)
-			{
-				ar << pPlayer->country_id;	
-			}
-
-			if(state2 & gactive_object::STATE_TITLE)
-			{
-				ar << pPlayer->title_id;
-			}
-
-			if(state2 & gactive_object::STATE_REINCARNATION)
-			{
-				ar << pPlayer->reincarnation_times;
-			}
-
-			if(state2 & gactive_object::STATE_REALMLEVEL)
-			{
-				ar << pPlayer->realmlevel;
-			}
-
-			if(state2 & gactive_object::STATE_MAFIA_PVP_MASK)
-			{
-				ar << pPlayer->mafia_pvp_mask;
-			}
-
-			return ar;
-		}
-		
-
-		template <>
+template <>
 		struct Make<INFO::player_info_1>
 		{
 
@@ -365,7 +299,77 @@ namespace  S2C
 				return wrapper << id << target << use_time << speed << move_mode;
 			}
 		};
+template <>
+		struct Make<CMD::self_info_1>
+		{
+			template <typename WRAPPER>
+			static WRAPPER & From(WRAPPER & wrapper,gplayer *pPlayer,int exp,int sp)
+			{
+				Make<single_data_header>::From(wrapper,SELF_INFO_1);
+				return Make<INFO::self_info_1>::From(wrapper,pPlayer,exp,sp);
+			}
+		};
 
+		template <>
+		struct Make<CMD::player_enter_slice>
+		{
+			template <typename WRAPPER>
+			static WRAPPER & From(WRAPPER & wrapper,gplayer* pPlayer,const A3DVECTOR & pos)
+			{
+				Make<single_data_header>::From(wrapper,PLAYER_ENTER_SLICE);
+				Make<INFO::player_info_1>::From(wrapper,pPlayer,pos);
+				//这里要注意，不能在隐身状态下使用
+				ASSERT(pPlayer->gm_invisible == false);
+				return wrapper;
+			}
+		};
+
+		template <>
+		struct Make<CMD::npc_enter_slice>
+		{
+			template <typename WRAPPER>
+			static WRAPPER & From(WRAPPER & wrapper,gnpc * pNPC,const A3DVECTOR & pos)
+			{
+				Make<single_data_header>::From(wrapper,NPC_ENTER_SLICE);
+				return Make<INFO::npc_info>::From(wrapper,pNPC,pos);
+			}
+		};
+
+		template <>
+		struct Make<CMD::npc_enter_world>
+		{
+			template <typename WRAPPER>
+			static WRAPPER & From(WRAPPER & wrapper,gnpc * pNPC)
+			{
+				Make<single_data_header>::From(wrapper,NPC_ENTER_WORLD);
+				return Make<INFO::npc_info>::From(wrapper,pNPC);
+			}
+		};
+
+
+		template <>
+		struct Make<CMD::leave_slice>
+		{
+			template <typename WRAPPER>
+			static WRAPPER & From(WRAPPER & wrapper,gobject * pObject)
+			{
+				Make<single_data_header>::From(wrapper,OBJECT_LEAVE_SLICE);
+				return wrapper << pObject->ID.id;
+			}
+		};
+
+		template <>
+		struct Make<CMD::notify_pos>
+		{
+			template <typename WRAPPER, typename KEY>
+			static WRAPPER & From(WRAPPER & wrapper,const A3DVECTOR & pos, int tag, const KEY & key)
+			{
+				Make<single_data_header>::From(wrapper,OBJECT_NOTIFY_POS);
+				return wrapper <<  pos << tag << key.key1;
+			}
+		};
+
+		
 		template<>
 		struct Make<CMD::object_move>
 		{
@@ -774,6 +778,7 @@ namespace  S2C
 				return wrapper;
 			}
 		};
+		template <>
 		struct Make<CMD::receive_exp>
 		{
 			
@@ -785,6 +790,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::level_up>
 		{
 			
@@ -796,6 +802,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::unselect>
 		{
 			template <typename WRAPPER>
@@ -805,6 +812,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::self_item_info>
 		{
 			template <typename WRAPPER>
@@ -823,6 +831,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::self_item_empty_info>
 		{
 			template <typename WRAPPER>
@@ -832,6 +841,7 @@ namespace  S2C
 				return wrapper << where << index;
 			}
 		};
+		template <>
 		struct Make<CMD::self_inventory_data>
 		{
 			template <typename WRAPPER>
@@ -844,6 +854,7 @@ namespace  S2C
 			}
 		};
 		
+		template <>
 		struct Make<CMD::self_inventory_detail_data>
 		{
 			template <typename WRAPPER>
@@ -857,6 +868,7 @@ namespace  S2C
 		};
 
 		
+		template <>
 		struct Make<CMD::exchange_inventory_item>
 		{
 			template <typename WRAPPER>
@@ -866,6 +878,7 @@ namespace  S2C
 				return wrapper << idx1 << idx2;
 			}
 		};
+		template <>
 		struct Make<CMD::move_inventory_item>
 		{
 			template <typename WRAPPER>
@@ -876,6 +889,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::player_drop_item>
 		{
 			template <typename WRAPPER>
@@ -886,6 +900,7 @@ namespace  S2C
 			}
 		};
 		
+		template <>
 		struct Make<CMD::exchange_equipment_item>
 		{
 			template <typename WRAPPER>
@@ -896,6 +911,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::equip_item>
 		{
 			template <typename WRAPPER>
@@ -906,6 +922,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::move_equipment_item>
 		{
 			template <typename WRAPPER>
@@ -915,6 +932,7 @@ namespace  S2C
 				return wrapper << idx_inv << idx_eq << amount;
 			}
 		};
+		template <>
 		struct Make<CMD::self_get_property>
 		{
 			template <typename WRAPPER>
@@ -925,6 +943,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::set_status_point>
 		{
 			template <typename WRAPPER>
@@ -935,6 +954,7 @@ namespace  S2C
 				}
 		};
 
+		template <>
 		struct Make<CMD::player_select_target>
 		{
 			template <typename WRAPPER>
@@ -945,6 +965,7 @@ namespace  S2C
 				}
 		};
 
+		template <>
 		struct Make<CMD::player_extprop_base>
 		{
 			template <typename WRAPPER>
@@ -959,6 +980,7 @@ namespace  S2C
 				}
 		};
 		
+		template <>
 		struct Make<CMD::player_extprop_move>
 		{
 			template <typename WRAPPER>
@@ -972,6 +994,7 @@ namespace  S2C
 				}
 		};
 
+		template <>
 		struct Make<CMD::player_extprop_attack>
 		{
 			template <typename WRAPPER>
@@ -992,6 +1015,7 @@ namespace  S2C
 				}
 		};
 
+		template <>
 		struct Make<CMD::player_extprop_defense>
 		{
 			template <typename WRAPPER>
@@ -1010,6 +1034,7 @@ namespace  S2C
 				}
 		};
 
+		template <>
 		struct Make<CMD::team_leader_invite>
 		{
 			template <typename WRAPPER>
@@ -1020,6 +1045,7 @@ namespace  S2C
 			}
 		};
 		
+		template <>
 		struct Make<CMD::team_reject_invite>
 		{
 			template <typename WRAPPER>
@@ -1030,6 +1056,7 @@ namespace  S2C
 			}
 		};
 		
+		template <>
 		struct Make<CMD::team_join_team>
 		{
 			template <typename WRAPPER>
@@ -1040,6 +1067,7 @@ namespace  S2C
 			}
 		};
 		
+		template <>
 		struct Make<CMD::team_member_leave>
 		{
 			template <typename WRAPPER>
@@ -1050,6 +1078,7 @@ namespace  S2C
 			}
 		};
 		
+		template <>
 		struct Make<CMD::team_leave_party>
 		{
 			template <typename WRAPPER>
@@ -1060,6 +1089,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::team_new_member>
 		{
 			template <typename WRAPPER>
@@ -1070,6 +1100,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::team_leader_cancel_party>
 		{
 			template <typename WRAPPER>
@@ -1080,6 +1111,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::team_member_data>
 		{
 			template <typename WRAPPER,typename MEMBER_ENTRY>
@@ -1114,6 +1146,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::teammate_pos>
 		{
 			template <typename WRAPPER>
@@ -1124,6 +1157,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::send_equipment_info>
 		{
 			template <typename WRAPPER, typename OCTETS>
@@ -1140,6 +1174,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::equipment_info_changed>
 		{
 			template <typename WRAPPER>
@@ -1156,6 +1191,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::equipment_damaged>
 		{
 			template <typename WRAPPER>
@@ -1166,6 +1202,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::team_member_pickup>
 		{
 			template <typename WRAPPER>
@@ -1176,6 +1213,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::npc_greeting>
 		{
 			template <typename WRAPPER>
@@ -1186,6 +1224,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::npc_service_content>
 		{
 			template <typename WRAPPER>
@@ -1198,6 +1237,7 @@ namespace  S2C
 			}
 		};
 		
+		template <>
 		struct Make<CMD::player_purchase_item>
 		{
 			template <typename WRAPPER>
@@ -1232,6 +1272,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::item_to_money>
 		{
 			template < typename WRAPPER>
@@ -1242,6 +1283,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::repair_all>
 		{
 			template < typename WRAPPER>
@@ -1252,6 +1294,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::repair>
 		{
 			template < typename WRAPPER>
@@ -1262,6 +1305,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::renew>
 		{
 			template < typename WRAPPER>
@@ -1271,6 +1315,7 @@ namespace  S2C
 			}
 		};
 
+		template <>
 		struct Make<CMD::spend_money>
 		{
 			template < typename WRAPPER>

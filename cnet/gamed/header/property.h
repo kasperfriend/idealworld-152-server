@@ -1,6 +1,7 @@
 #ifndef __ONLINEGAME_GS_OBJ_PROPERTY_H__
 #define __ONLINEGAME_GS_OBJ_PROPERTY_H__ 
 #include "config.h"
+#include <cstring>
 
 //对象的基本属性(很少受外界影响的属性）
 struct basic_prop

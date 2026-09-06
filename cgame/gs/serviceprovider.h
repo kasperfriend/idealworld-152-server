@@ -201,7 +201,7 @@ public:
 	
 	bool AddProvider(service_provider * provider)
 	{
-		if(!(_list.insert(LIST::value_type(provider->GetProviderType(),provider)).second))
+		if(!(_list.insert(typename LIST::value_type(provider->GetProviderType(),provider)).second))
 		{
 			ASSERT(false && "Òì³£Çé¿ö");
 			return false;

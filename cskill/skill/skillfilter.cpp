@@ -1,4 +1,5 @@
 #include "skillwrapper.h"
+#include <cstring>
 #include "skill.h"
 #include "skillfilter.h"
 #include "playerwrapper.h"

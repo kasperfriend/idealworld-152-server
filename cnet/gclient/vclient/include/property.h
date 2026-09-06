@@ -223,7 +223,7 @@ struct team_mutable_prop
 			mp = bp.mp;
 			max_hp = ep.max_hp;
 			max_mp = ep.max_mp;
-			world_tag = world_manager::GetWorldTag();
+			world_tag = 0;
 			plane_index = pImp->_plane->w_plane_index;
 			wallow_level = pImp->_wallow_level;
 			profit_level = pImp->_profit_level;

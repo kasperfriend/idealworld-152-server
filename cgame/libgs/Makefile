@@ -2,10 +2,10 @@
 LIB_PATH=$(BASEPATH)/libgs
 
 all: FORCE clean
-	cd gs;ar x $(IOPATH)/libgsPro2.a 
-	cd io;ar x $(IOPATH)/libgsio.a 
-	cd db;ar x $(IOPATH)/libdbCli.a 
-	cd sk;ar x $(IOPATH)/libskill.a 
+	cd gs;ar x $(IOPATH)/gamed/libgsPro2.a 
+	cd io;ar x $(IOPATH)/io/libgsio.a 
+	cd db;ar x $(IOPATH)/gdbclient/libdbCli.a 
+	cd sk;ar x $(CSKILLPATH)/skill/libskill.a 
 	#cd log;ar x $(IOPATH)/liblogCli.a
 
 FORCE:

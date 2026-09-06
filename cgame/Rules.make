@@ -1,33 +1,27 @@
-IOPATH=/pwsrc/antihype152V127/cnet
-BASEPATH=/pwsrc/antihype152V127/cgame
+# Portable Rules.make - auto-detects repo layout
+RULES_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+BASEPATH := $(abspath $(RULES_DIR))
+IOPATH := $(abspath $(BASEPATH)/../cnet)
+CSKILLPATH := $(abspath $(BASEPATH)/../cskill)
 
-INC=-I$(BASEPATH)/include -I$(BASEPATH) -I$(IOPATH)/inc
-IOLIB_OBJ=$(BASEPATH)/libgs/gs/*.o $(BASEPATH)/libgs/io/*.o $(BASEPATH)/libgs/db/*.o /pwsrc/antihype152V127/cskill/skill/*.o /pwsrc/antihype152V127/cskill/skills/*.o $(BASEPATH)/libgs/log/*.o
+INC=-I$(BASEPATH)/include -I$(BASEPATH) -I$(IOPATH)/inc -I$(IOPATH) -I$(CSKILLPATH)
+IOLIB_OBJ=$(BASEPATH)/libgs/gs/*.o $(BASEPATH)/libgs/io/*.o $(BASEPATH)/libgs/db/*.o $(CSKILLPATH)/skill/*.o $(CSKILLPATH)/skills/*.o $(BASEPATH)/libgs/log/*.o
 CMLIB=$(BASEPATH)/libcommon.a $(BASEPATH)/libonline.a $(IOLIB_OBJ) $(BASEPATH)/collision/libTrace.a
-DEF = -DLINUX -D_DEBUG  -D__THREAD_SPIN_LOCK__ 
-#DEF += -D_CHECK_MEM_ALLOC
-#DEF += -D__USE_ICPC__  
-#DEF += -D__TEST_PERFORMANCE__
+DEF = -DLINUX -D_DEBUG  -D__THREAD_SPIN_LOCK__
 DEF += -D__USER__=\"AntiHypeTeam\"
 
-THREAD = -D_REENTRANT -D_THREAD_SAFE 
-THREADLIB = -pthread  
+THREAD = -D_REENTRANT -D_THREAD_SAFE
+THREADLIB = -pthread
 PCRELIB = -lpcre
-ALLLIB = $(THREADLIB) $(PCRELIB) /usr/lib/libcrypto.a
-CFLAGS  = -Wall #-pipe
-CPPFLAGS = -Wall #-pipe
+ALLLIB = $(THREADLIB) $(PCRELIB) -lcrypto
+CFLAGS  = -Wall -fpermissive -Wno-narrowing -Wno-deprecated-declarations -include cstring -include iconv.h -include climits -include ctime
+CPPFLAGS = -Wall -fpermissive -Wno-narrowing -Wno-deprecated-declarations -include cstring -include iconv.h -include climits -include ctime
 OPTIMIZE = -O0
-#-O2 -ipo
-CC=gcc   $(DEF) $(OPTIMIZE) $(THREAD) $(CFLAGS) -g -ggdb
-CPP=g++ $(DEF) $(OPTIMIZE) $(THREAD) $(CPPFLAGS) -g -ggdb
-#-pedantic
-LD=g++ -g  $(OPTIMIZE) $(THREADLIB) 
-AR=ar crs 
+CC=gcc   $(DEF) $(OPTIMIZE) $(THREAD) $(CFLAGS) -g -ggdb -m64
+CPP=g++ $(DEF) $(OPTIMIZE) $(THREAD) $(CPPFLAGS) -g -ggdb -m64
+LD=g++ -g  $(OPTIMIZE) $(THREADLIB) -m64
+AR=ar crs
 ARX=ar x
-
-#
-# include dependency files if they exist
-#
 
 ifneq ($(wildcard .depend),)
 include .depend
@@ -41,4 +35,3 @@ endif
 
 dep:
 	$(CC) -MM $(INC)  -c *.c* > .depend
-

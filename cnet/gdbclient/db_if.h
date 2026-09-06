@@ -151,7 +151,7 @@ struct base_info
 struct ivec
 {
 	const void * data;
-	unsigned int size;
+	size_t size;
 };
 
 struct itemdata
@@ -166,7 +166,7 @@ struct itemdata
 	int proctype;
 	int expire_date;
 	const void * data;
-	unsigned int size;
+	size_t size;
 };
 
 

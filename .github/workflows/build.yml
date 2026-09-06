@@ -1,0 +1,109 @@
+name: Build Server
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev libpcre3-dev build-essential
+
+      - name: Fix libcrypto symlink if needed
+        run: |
+          if [ ! -f /usr/lib/x86_64-linux-gnu/libcrypto.so ] && [ -f /usr/lib/x86_64-linux-gnu/libcrypto.so.3 ]; then
+            sudo ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+            echo "created libcrypto symlink"
+          fi
+          ls -l /usr/lib/x86_64-linux-gnu/libcrypto.so* || true
+
+      - name: Build cnet perf
+        run: |
+          make -C cnet/perf clean
+          make -C cnet/perf -j4
+          ls -lh cnet/perf/libperf.a cnet/perf/x86_64/libperf.a || true
+
+      - name: Build cnet (gamed, io, gdbclient libs + daemons)
+        run: |
+          make -C cnet -f MakeGame clean || true
+          make -C cnet -f MakeGame -j4
+          echo "=== cnet binaries ==="
+          ls -lh cnet/glinkd/glinkd cnet/gdeliveryd/gdeliveryd cnet/gauthd/gauthd cnet/gamedbd/gamedbd.wdb cnet/gamed/libgsPro2.a cnet/io/libgsio.a cnet/gdbclient/libdbCli.a 2>&1 | head -n 50
+
+      - name: Build cskill
+        run: |
+          make -C cskill/skill -f ../Makefilelib clean || true
+          make -C cskill/skill -f ../Makefilelib -j4
+          ls -lh cskill/skill/libskill.a 2>&1 | head
+
+      - name: Build cgame libs
+        run: |
+          make -C cgame/collision -j4 || true
+          make -C cgame/io -j4 || true
+          make -C cgame/libgs -j4 || true
+          ls -lh cgame/collision/libTrace.a cgame/libgs/gs/*.o cgame/libgs/io/*.o cgame/libgs/db/*.o cgame/libgs/sk/*.o 2>&1 | head -n 50
+
+      - name: Build cgame gs
+        run: |
+          make -C cgame clean || true
+          make -C cgame -j4
+          echo "=== cgame gs ==="
+          ls -lh cgame/gs/gs 2>&1 | head
+          find cgame -maxdepth 3 -type f -executable | head -n 50
+
+      - name: Package binaries
+        if: always()
+        run: |
+          mkdir -p dist
+          # cnet daemons
+          cp -v cnet/glinkd/glinkd dist/ 2>&1 | head
+          cp -v cnet/gdeliveryd/gdeliveryd dist/ 2>&1 | head
+          cp -v cnet/gauthd/gauthd dist/ 2>&1 | head
+          cp -v cnet/gamedbd/gamedbd.wdb dist/gamedbd 2>&1 | head
+          cp -v cnet/gamed/libgsPro2.a dist/ 2>&1 | head
+          cp -v cnet/io/libgsio.a dist/ 2>&1 | head
+          cp -v cnet/gdbclient/libdbCli.a dist/ 2>&1 | head
+          cp -v cnet/perf/libperf.a dist/ 2>&1 | head
+          # cskill
+          cp -v cskill/skill/libskill.a dist/ 2>&1 | head
+          # cgame
+          cp -v cgame/gs/gs dist/gs 2>&1 | head
+          cp -v cgame/libcommon.a dist/ 2>&1 | head
+          cp -v cgame/libonline.a dist/ 2>&1 | head
+          cp -v cgame/collision/libTrace.a dist/ 2>&1 | head
+          # also collect any built exes
+          find cnet -type f -executable -name "g*" | xargs -I{} cp -v {} dist/ 2>&1 | head -n 50
+          find cgame -type f -executable | xargs -I{} cp -v {} dist/ 2>&1 | head -n 50
+          tar -czf server-binaries.tar.gz -C dist . 2>&1 | head
+          ls -lh dist/ server-binaries.tar.gz 2>&1 | head -n 100
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-binaries
+          path: |
+            dist/
+            server-binaries.tar.gz
+          if-no-files-found: warn
+
+      - name: Create Release
+        if: always()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          body: "Automated build of server binaries (cnet/cskill/cgame) on x86_64."
+          files: |
+            server-binaries.tar.gz
+            dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

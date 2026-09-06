@@ -34,6 +34,9 @@ typedef unsigned int DWORD;
 typedef unsigned char UCHAR;
 
 
+inline void SetUCharBit(unsigned char& uch, int shift, bool bSet);
+inline void SetCharBit(char& ch, int shift, bool bSet);
+
 class CBitImage
 {
 

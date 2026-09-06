@@ -388,6 +388,20 @@ public:
 };
 #pragma pack()
 
+// Compile-time proof that on LP64 the task entry has doubled to 64 bytes
+// and buffers still fit. 32-bit layout is proven by decades of operation.
+#if defined(__LP64__) || defined(_WIN64)
+typedef char task_assert_active_entry_size[sizeof(ActiveTaskEntry) == 64 ? 1 : -1];
+typedef char task_assert_task_entry_fixed[sizeof(TASK_ENTRY_FIXED_DATA) == 33 ? 1 : -1];
+#endif
+typedef char task_assert_active_list_fit[(TASK_ACTIVE_LIST_MAX_LEN * TASK_DATA_BUF_MAX_LEN + TASK_ACTIVE_LIST_HEADER_LEN) <= 12000 ? 1 : -1];
+typedef char task_assert_finished_fit[TASK_FINISHED_LIST_BUF_SIZE >= 8192 ? 1 : -1];
+#if defined(__LP64__) || defined(_WIN64)
+typedef char task_assert_finishtime_buf[ (TASK_FINISH_TIME_MAX_LEN * 10 + 2) == TASK_FINISH_TIME_LIST_BUF_SIZE ? 1 : -1];
+typedef char task_assert_finishcount_buf[(TASK_FINISH_COUNT_MAX_LEN * 26 + 2) == TASK_FINISH_COUNT_LIST_BUF_SIZE ? 1 : -1];
+#endif
+typedef char task_assert_storage_fit[TASK_STORAGE_LIST_BUF_SIZE >= 1024 ? 1 : -1];
+
 inline void ActiveTaskList::ClearTask(TaskInterface* pTask, ActiveTaskEntry* pEntry, bool bRemoveItem)
 {
 	RecursiveClearTask(pTask, pEntry, bRemoveItem, true, true);

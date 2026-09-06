@@ -1,5 +1,6 @@
 
 #include <string>
+#include <cstring>
 #include <list>
 #include <vector>
 #include <map>
