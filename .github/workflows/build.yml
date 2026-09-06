@@ -75,6 +75,7 @@ jobs:
           # without unpacking the archive
           cp "$PKG"/bin/* release/
           cp "$PKG"/MANIFEST.txt "$PKG"/SHA256SUMS.txt release/
+          cp RUNBOOK.md release/
           {
             echo "## idealworld-152 server - build ${{ github.run_number }}"
             echo
@@ -119,6 +120,7 @@ jobs:
           files: |
             release/*.tar.gz
             release/*.txt
+            release/RUNBOOK.md
             release/glinkd
             release/gdeliveryd
             release/gauthd

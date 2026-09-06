@@ -6,8 +6,8 @@ DEBUG_VERSION = true
 include ../mk/gcc.defs.mk
 
 INCLUDES += -I$(TOP_SRCDIR)/gfaction/operations -I$(TOP_SRCDIR)/include
-DEFINES += -g -ggdb -D_TESTCODE -DUSE_EPOLL -DUSE_HASH_MAP
-LDFLAGS	+= -g -ggdb -DUSE_HASH_MAP
+DEFINES += -g -ggdb -D_TESTCODE -DUSE_EPOLL
+LDFLAGS	+= -g -ggdb
 
 OBJS = glinkclient.o state.o stubs.o gclient.o factionlib.o vclient_if.o 
 

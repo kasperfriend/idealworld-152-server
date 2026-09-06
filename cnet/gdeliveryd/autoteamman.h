@@ -2,6 +2,7 @@
 #define __GNET_AUTO_TEAM_MAN_H
 #include <vector>
 #include <map>
+#include <ext/hash_map>
 
 #include "autoteamconfigdata"
 

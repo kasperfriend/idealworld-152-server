@@ -1,4 +1,10 @@
 AR  = ar
+# NOTE: the io/common/logclient objects built here are shared by every daemon.
+# Do NOT define USE_HASH_MAP (or any other macro changing struct layout, e.g.
+# via cnet/common/map.h gnet_map) per-daemon: the daemons used to add it in
+# their own Makefiles, which produced mixed hash_map/std::map layouts of the
+# same inline types (Security::Map) inside one binary and startup crashes
+# (segfault / bad_alloc in Security::Create).  It must stay consistent tree-wide.
 CPP = g++
 CC  = g++
 #CC = icpc -w -xN 

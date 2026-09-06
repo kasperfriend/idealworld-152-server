@@ -26,6 +26,7 @@
 #include "statusannounce.hpp"
 #include "accountingrequest.hpp"
 #include "announcezoneid.hpp"
+#include "announcezoneid3.hpp"
 #include "queryuserprivilege.hpp"
 #include "queryuserforbid.hpp"
 #include "gmkickoutuser.hpp"
@@ -76,6 +77,7 @@ static KeyExchange __stub_KeyExchange((void*)0);
 static StatusAnnounce __stub_StatusAnnounce((void*)0);
 static AccountingRequest __stub_AccountingRequest((void*)0);
 static AnnounceZoneid __stub_AnnounceZoneid((void*)0);
+static AnnounceZoneid3 __stub_AnnounceZoneid3((void*)0);
 static QueryUserPrivilege __stub_QueryUserPrivilege((void*)0);
 static QueryUserForbid __stub_QueryUserForbid((void*)0);
 static GMKickoutUser __stub_GMKickoutUser((void*)0);

@@ -105,7 +105,13 @@ public:
 private:
 	#define MPPE_HIST_LEN		8192	/* MPPC history size */
 
-#if defined __GNUC__
+	/* The MMX implementation below keeps the output pointer inside 32-bit
+	   MMX lanes (movd), so it only works on 32-bit x86: on x86_64 the
+	   pointer is truncated and putbits writes through a garbage address
+	   (SIGSEGV in GNET::Compress at startup of gamedbd/gdeliveryd).
+	   Everywhere else use the plain C version at the bottom of this file,
+	   which implements the same bitstream. */
+#if defined __GNUC__ && (defined __i386__ || defined _M_IX86)
 	static inline void putbits(unsigned int val, unsigned int n)
 	{
 		register unsigned char *dummy;
