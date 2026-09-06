@@ -144,6 +144,43 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Report failures to PR
+        # The per-step logs live in artifacts (not always reachable from every
+        # network), so also post a bounded error digest as a PR comment.
+        if: failure() && github.event.pull_request.number != ''
+        run: |
+          set -uo pipefail
+          {
+            echo "## Windows build failure digest (native job, run ${{ github.run_number }})"
+            echo
+            echo "Commit \`${GITHUB_SHA}\`."
+            echo
+            if [ ! -d ci-build-win ]; then
+              echo "The driver never started (no ci-build-win/ directory). See the job log."
+            else
+              echo "### Step results"
+              echo
+              echo '```'
+              for f in ci-build-win/*.status; do
+                printf '%s: %s\n' "$(basename "$f" .status)" "$(cat "$f")"
+              done
+              echo '```'
+              for f in ci-build-win/*.status; do
+                grep -q '^ok' "$f" && continue
+                log="ci-build-win/$(basename "$f" .status).log"
+                echo
+                echo "### \`$(basename "$log")\`"
+                echo
+                echo '```'
+                grep -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error|was not declared|no such|No rule to make" "$log" 2>/dev/null | head -n 60
+                echo '```'
+              done
+            fi
+          } > digest-full.md
+          head -c 50000 digest-full.md > digest.md
+          echo "digest bytes: $(wc -c < digest.md)"
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file digest.md
+
       - name: Publish GitHub Release
         if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
@@ -220,3 +257,40 @@ jobs:
           path: ci-build-win/
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Report failures to PR
+        # The per-step logs live in artifacts (not always reachable from every
+        # network), so also post a bounded error digest as a PR comment.
+        if: failure() && github.event.pull_request.number != ''
+        run: |
+          set -uo pipefail
+          {
+            echo "## Windows build failure digest (zig job, run ${{ github.run_number }})"
+            echo
+            echo "Commit \`${GITHUB_SHA}\`."
+            echo
+            if [ ! -d ci-build-win ]; then
+              echo "The driver never started (no ci-build-win/ directory). See the job log."
+            else
+              echo "### Step results"
+              echo
+              echo '```'
+              for f in ci-build-win/*.status; do
+                printf '%s: %s\n' "$(basename "$f" .status)" "$(cat "$f")"
+              done
+              echo '```'
+              for f in ci-build-win/*.status; do
+                grep -q '^ok' "$f" && continue
+                log="ci-build-win/$(basename "$f" .status).log"
+                echo
+                echo "### \`$(basename "$log")\`"
+                echo
+                echo '```'
+                grep -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error|was not declared|no such|No rule to make" "$log" 2>/dev/null | head -n 60
+                echo '```'
+              done
+            fi
+          } > digest-full.md
+          head -c 50000 digest-full.md > digest.md
+          echo "digest bytes: $(wc -c < digest.md)"
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file digest.md
