@@ -7,6 +7,7 @@
 #include <openssl/x509.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
+#include <openssl/rsa.h>
 
 using namespace GNET;
 namespace gdeliverd
@@ -206,7 +207,14 @@ void Cert::GenerateRandNum(unsigned char *buf, int size)
 //
 int Cert::Encrypt(int key_len, unsigned char* key, unsigned char* buf)
 {
-	return RSA_public_encrypt(key_len, key, buf, cert_pkey->pkey.rsa, RSA_PKCS1_PADDING);
+	// EVP_PKEY is an opaque type since OpenSSL 1.1.0, so the RSA key has to be
+	// fetched through the accessor instead of reaching into cert_pkey->pkey.rsa.
+	RSA *rsa = EVP_PKEY_get1_RSA(cert_pkey);
+	if (rsa == NULL)
+		return -1;
+	int ret = RSA_public_encrypt(key_len, key, buf, rsa, RSA_PKCS1_PADDING);
+	RSA_free(rsa);
+	return ret;
 }
 
 //
@@ -214,7 +222,12 @@ int Cert::Encrypt(int key_len, unsigned char* key, unsigned char* buf)
 //
 int Cert::Decrypt(int buf_len, unsigned char* buf, unsigned char* key)
 {
-	return RSA_public_decrypt(buf_len, buf, key, cert_pkey->pkey.rsa, RSA_PKCS1_PADDING);
+	RSA *rsa = EVP_PKEY_get1_RSA(cert_pkey);
+	if (rsa == NULL)
+		return -1;
+	int ret = RSA_public_decrypt(buf_len, buf, key, rsa, RSA_PKCS1_PADDING);
+	RSA_free(rsa);
+	return ret;
 }
 
 

@@ -1,2 +1,0 @@
-cnet/gdeliveryd/gdeliveryd filter=lfs diff=lfs merge=lfs -text
-cskill/skill/libskill.a filter=lfs diff=lfs merge=lfs -text

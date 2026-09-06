@@ -1,5 +1,18 @@
 #include "world.h"
 
+// See objmanager.h: the heartbeat loop of obj_manager<> reaches into world
+// (plane->w_activestate) and gobject_imp (DispatchMessage), which are only
+// forward declared where the template is defined.
+bool objman_plane_inactive(gobject * obj)
+{
+	return obj->plane->w_activestate != 1;
+}
+
+int objman_dispatch(gobject * obj, MSG & msg)
+{
+	return obj->imp->DispatchMessage(obj->plane, msg);
+}
+
 bool 
 extern_object_manager::Init()
 {

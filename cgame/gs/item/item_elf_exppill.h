@@ -29,7 +29,7 @@ public:
 public:
 	bool IsItemCanUseWithArg(item::LOCATION l, size_t arg_size)
 	{
-		return l == item::INVENTORY && arg_size == sizeof(unsigned int) && exp > 0;
+		return l == item::INVENTORY && arg_size == sizeof(unsigned int) && ess.exp > 0;
 	}
 	int OnUse(item::LOCATION l, int index, gactive_imp * imp, const char * arg, size_t arg_size);
 

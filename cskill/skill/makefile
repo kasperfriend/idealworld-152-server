@@ -13,6 +13,7 @@ LIB = libskill.a
 all : $(LIB)
 
 $(LIB) : $(OBJS) $(STUBOBJS)
+	rm -f $(LIB)
 	ar crs $(LIB) $(OBJS) $(STUBOBJS)
 
 $(OBJS) : $(HEADERS)

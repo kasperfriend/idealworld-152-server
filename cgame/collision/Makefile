@@ -1,6 +1,7 @@
 CS2OBJ = A3DCollision.o  A3DFuncs.o  A3DGeometry.o  A3DMatrix.o  A3DQuaternion.o  BrushMan.o  BrushTree.o  CDBrush.o  ConvexHullData.o  Face.o  HalfSpace.o  NmdChd.o  NmdTree.o  SMTree.o  traceman.o
 
 all:	$(CS2OBJ)
+	rm -f libTrace.a
 	$(AR) libTrace.a $(CS2OBJ)
 	
 .c.o:

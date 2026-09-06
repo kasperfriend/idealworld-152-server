@@ -10,7 +10,9 @@ include ../mk/gcc.defs.mk
 
 HEADERS = callup.h  playerwrapper.h  range.h  skill.h  skillexpr.h  skillfilter.h  skilllevel.h  skillwrapper.h  targetwrapper.h
 CPPFILES = main.cpp  playerwrapper.cpp  skill.cpp  skillfilter.cpp  skillwrapper.cpp
-STUBOBJS = ../skills/skillstub.o
+# The generated stub objects: ../skills/skillstub.cpp is not part of this source
+# drop, so build the checked-in stubs*.cpp files that the generator produced.
+STUBOBJS = $(patsubst %.cpp,%.o,$(wildcard ../skills/stubs*.cpp))
 OBJS = skill.o skillwrapper.o playerwrapper.o skillfilter.o 
 OUTEROBJS = ../common/conf.o ../common/thread.o ../common/timer.o ../common/itimer.o ../io/pollio.o 
 INCLUDES += -I../expr -I../header -I../header/include
@@ -31,13 +33,22 @@ EXES = skill
 all : lib
 
 lib : $(OBJS) $(EXPROBJS) $(STUBOBJS)
-	ar crs libskill.a $(OBJS) $(EXPROBJS) $(STUBOBJS)
+	rm -f libskill.a
+	$(AR) crs libskill.a $(OBJS) $(EXPROBJS) $(STUBOBJS)
 
 dlib : $(OBJS) $(OUTEROBJS) $(EXPROBJS)
 	rm libskill.so -f
 	$(LD) -shared -fPIC $(LDFLAGS) $(OBJS) $(OUTEROBJS) $(EXPROBJS) $(STUBOBJS) -o libskill.so
 
 $(STUBOBJS) : $(HEADERS) ../skills/*.h
+
+# The generated skill stubs hold legacy GBK text inside their string literals.
+# The files are not uniformly encoded, so they are compiled verbatim: telling
+# gcc that the source is ISO-8859-1 and emitting ISO-8859-1 makes every byte
+# round-trip untouched, which keeps the GBK payload in the narrow literals
+# (std::string nativename/desc) exactly as the original build produced it.
+../skills/%.o : ../skills/%.cpp
+	$(CC) -c $(DEFINES) $(INCLUDES) $(CFLAGS) -finput-charset=ISO-8859-1 -fexec-charset=ISO-8859-1 -w $< -o $@
 
 $(OBJS) : $(HEADERS)
 

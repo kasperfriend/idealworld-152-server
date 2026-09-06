@@ -11,6 +11,16 @@ struct item_data;
 class gactive_imp;
 struct gactive_object;
 class world_manager;
+
+// world_manager is only forward declared here, but Make<CMD::server_config_data>
+// below reads its tags.  Going through a template parameter defers that lookup to
+// the point of instantiation, so this header stays includable without gs headers.
+template <typename WORLD_MGR>
+inline int protoglobal_world_tag()   { return WORLD_MGR::GetWorldTag(); }
+template <typename WORLD_MGR>
+inline int protoglobal_region_tag()  { return WORLD_MGR::GetRegionTag(); }
+template <typename WORLD_MGR>
+inline int protoglobal_precinct_tag(){ return WORLD_MGR::GetPrecinctTag(); }
 class item;
 
 
@@ -2715,7 +2725,7 @@ template <>
 			inline static WRAPPER & From(WRAPPER & wrapper, int mall_time, int mall2_time)
 			{
 				Make<single_data_header>::From(wrapper, SERVER_CONFIG_DATA);
-				return wrapper << world_manager::GetWorldTag() << world_manager::GetRegionTag() << world_manager::GetPrecinctTag() << mall_time << mall2_time;
+				return wrapper << protoglobal_world_tag<world_manager>() << protoglobal_region_tag<world_manager>() << protoglobal_precinct_tag<world_manager>() << mall_time << mall2_time;
 			}
 		};
 

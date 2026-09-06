@@ -7,6 +7,38 @@
 #include "task/taskman.h"
 #include <arandomgen.h>
 
+// See playerinvade.h: moved out of the template so that the complete types
+// gactive_imp / gplayer are available here.
+void player_invade::SetParentStateImpl(int state)
+{
+
+		switch(state)
+		{
+			default:
+			ASSERT(false);
+			case gactive_imp::INVADER_LVL_0:
+			((gplayer*)_imp->_parent)->object_state &= ~(gactive_object::STATE_INVADER|gactive_object::STATE_PARIAH);
+			_imp->_faction &= ~FACTION_PARIAH;
+			((gplayer*)_imp->_parent)->base_info.faction = _imp->_faction;
+			break;
+
+			case gactive_imp::INVADER_LVL_1:
+			((gplayer*)_imp->_parent)->object_state &= ~gactive_object::STATE_PARIAH;
+			((gplayer*)_imp->_parent)->object_state |= gactive_object::STATE_INVADER;
+			break;
+			
+			case gactive_imp::INVADER_LVL_2:
+			UpdatePariahState();
+			((gplayer*)_imp->_parent)->object_state &= ~gactive_object::STATE_INVADER;
+			((gplayer*)_imp->_parent)->object_state |= gactive_object::STATE_PARIAH;
+			_imp->_faction |= FACTION_PARIAH;
+			((gplayer*)_imp->_parent)->base_info.faction = _imp->_faction;
+			((gplayer*)_imp->_parent)->pariah_state = _pariah_state;
+			break;
+		}
+	
+}
+
 #define ASSERT_STATE(z) ASSERT(pInvade->_invader_state == (z) && pInvade->_invader_state == pInvade->_imp->_invader_state)
 
 /*装备损毁规则:

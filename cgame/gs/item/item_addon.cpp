@@ -235,14 +235,17 @@ namespace
 			//ASSERT(addon_manager::GetArgCount(data.id) == 2);
 		}
 	};
+	// The hand rolled offsetof (cast 100 to the class, take the address of the
+	// member, subtract 100) is not a constant expression in modern C++, but these
+	// are used as enumerator / template argument values, so use the builtin.
 	enum
 	{
-		POINT_OFF = ((size_t)&(((gactive_imp*)100)->_en_point)) - 100,
-		PERCENT_OFF = ((size_t)&(((gactive_imp*)100)->_en_percent)) - 100,
-		EQ_POINT = ((size_t)&(((equip_item*)100)->_base_param)) - 100,
-		EQ_PERCENT = ((size_t)&(((equip_item*)100)->_base_param_percent)) - 100,
+		POINT_OFF = __builtin_offsetof(gactive_imp, _en_point),
+		PERCENT_OFF = __builtin_offsetof(gactive_imp, _en_percent),
+		EQ_POINT = __builtin_offsetof(equip_item, _base_param),
+		EQ_PERCENT = __builtin_offsetof(equip_item, _base_param_percent),
 	};
-#define MY_OFFSETOF(st,member) (((size_t)&(((st*)100)->member)) - 100)
+#define MY_OFFSETOF(st,member) __builtin_offsetof(st,member)
 }
 
 class enhance_durability_addon : public essence_addon
