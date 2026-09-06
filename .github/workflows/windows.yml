@@ -146,8 +146,6 @@ jobs:
           retention-days: 14
 
       - name: Report failures to PR
-        # The per-step logs live in artifacts (not always reachable from every
-        # network), so also post a bounded error digest as a PR comment.
         if: failure() && github.event.pull_request.number != ''
         run: |
           # The runner wraps scripts with -e; a failing grep must not kill this.
@@ -155,46 +153,59 @@ jobs:
           set -uo pipefail
           {
             echo "## Windows build failure digest (native job, run ${{ github.run_number }})"
-            echo
-            echo "Commit \`${GITHUB_SHA}\`."
-            echo
-            if [ ! -d ci-build-win ]; then
-              echo "The driver never started (no ci-build-win/ directory). See the job log."
-            else
-              echo "### Step results"
-              echo
+            echo ""
+            echo "| step | result |"
+            echo "| ---- | ------ |"
+            for f in ci-build-win/*.status; do
+              printf '| %s | %s |\n' "$$(basename "$$f" .status)" "$$(cat "$$f" 2>/dev/null || echo MISSING)"
+            done
+            echo ""
+            echo "<details><summary>first error lines per log</summary>"
+            echo ""
+            for log in ci-build-win/*.log; do
+              echo "### $$log"
               echo '```'
-              for f in ci-build-win/*.status; do
-                printf '%s: %s\n' "$(basename "$f" .status)" "$(cat "$f")"
-              done
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$$log" 2>/dev/null | head -n 60
               echo '```'
-              for f in ci-build-win/*.status; do
-                grep -q '^ok' "$f" && continue
-                log="ci-build-win/$(basename "$f" .status).log"
-                echo
-                echo "### \`$(basename "$log")\`"
-                echo
-                echo '```'
-                grep -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error|was not declared|no such|No rule to make" "$log" 2>/dev/null | head -n 60
-                echo '```'
-              done
-            fi
+              echo ""
+            done
+            echo "</details>"
           } > digest-full.md
           head -c 50000 digest-full.md > digest.md
-          echo "digest bytes: $(wc -c < digest.md)"
-          # Annotations first: they need no permissions and are always readable.
+          echo "digest bytes: $$(wc -c < digest-full.md)"
+          okc=0; failc=0
           for f in ci-build-win/*.status; do
-            grep -q '^ok' "$f" 2>/dev/null && continue
-            echo "::error::step $(basename "$f" .status): $(cat "$f" | head -c 300)"
+            [ -e "$$f" ] || continue
+            line="$$(cat "$$f" | head -c 300)"
+            step="$$(basename "$$f" .status)"
+            if printf '%s' "$$line" | grep -q '^ok'; then okc=$$((okc+1)); continue; fi
+            failc=$$((failc+1))
+            echo "::error::step $$step: $$line"
+            log="ci-build-win/$$step.log"
+            if [ -f "$$log" ]; then
+              tail -n 3 "$$log" | while IFS= read -r line || [ -n "$$line" ]; do
+                echo "::error::log $$step: $${line:0:700}"
+              done
+            else
+              echo "::error::log $$step: (no $$log)"
+            fi
           done
-          grep -h -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" ci-build-win/*.log 2>/dev/null | head -n 12 | while IFS= read -r line; do
-            echo "::error::${line:0:900}"
+          echo "::notice::steps ok=$$okc failed=$$failc"
+          GH_BIN="$$(command -v gh || command -v gh.exe || true)"
+          for cand in "/c/Program Files/GitHub CLI/gh.exe" "C:/Program Files/GitHub CLI/gh.exe"; do
+            if [ -z "$$GH_BIN" ] && [ -x "$$cand" ]; then GH_BIN="$$cand"; fi
           done
-          # Full digest as a PR comment (best effort).
-          GH_BIN="$(command -v gh || command -v gh.exe || true)"
-          if [ -z "$GH_BIN" ]; then
+          if [ -n "$$GH_BIN" ]; then
+            ERR="$$("$$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md 2>&1)"
+            if [ $$? -eq 0 ]; then
+              echo "::notice::posted digest to PR as comment"
+            else
+              echo "::warning::gh pr comment failed: $${ERR:0:800}"
+            fi
+          else
             echo "::warning::gh CLI not found; digest only available as annotations/artifacts"
-            exit 0
+          fi
+          exit 0
           fi
           if "$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
             echo "digest posted as PR comment"
@@ -281,8 +292,6 @@ jobs:
           retention-days: 14
 
       - name: Report failures to PR
-        # The per-step logs live in artifacts (not always reachable from every
-        # network), so also post a bounded error digest as a PR comment.
         if: failure() && github.event.pull_request.number != ''
         run: |
           # The runner wraps scripts with -e; a failing grep must not kill this.
@@ -290,46 +299,59 @@ jobs:
           set -uo pipefail
           {
             echo "## Windows build failure digest (zig job, run ${{ github.run_number }})"
-            echo
-            echo "Commit \`${GITHUB_SHA}\`."
-            echo
-            if [ ! -d ci-build-win ]; then
-              echo "The driver never started (no ci-build-win/ directory). See the job log."
-            else
-              echo "### Step results"
-              echo
+            echo ""
+            echo "| step | result |"
+            echo "| ---- | ------ |"
+            for f in ci-build-win/*.status; do
+              printf '| %s | %s |\n' "$$(basename "$$f" .status)" "$$(cat "$$f" 2>/dev/null || echo MISSING)"
+            done
+            echo ""
+            echo "<details><summary>first error lines per log</summary>"
+            echo ""
+            for log in ci-build-win/*.log; do
+              echo "### $$log"
               echo '```'
-              for f in ci-build-win/*.status; do
-                printf '%s: %s\n' "$(basename "$f" .status)" "$(cat "$f")"
-              done
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$$log" 2>/dev/null | head -n 60
               echo '```'
-              for f in ci-build-win/*.status; do
-                grep -q '^ok' "$f" && continue
-                log="ci-build-win/$(basename "$f" .status).log"
-                echo
-                echo "### \`$(basename "$log")\`"
-                echo
-                echo '```'
-                grep -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error|was not declared|no such|No rule to make" "$log" 2>/dev/null | head -n 60
-                echo '```'
-              done
-            fi
+              echo ""
+            done
+            echo "</details>"
           } > digest-full.md
           head -c 50000 digest-full.md > digest.md
-          echo "digest bytes: $(wc -c < digest.md)"
-          # Annotations first: they need no permissions and are always readable.
+          echo "digest bytes: $$(wc -c < digest-full.md)"
+          okc=0; failc=0
           for f in ci-build-win/*.status; do
-            grep -q '^ok' "$f" 2>/dev/null && continue
-            echo "::error::step $(basename "$f" .status): $(cat "$f" | head -c 300)"
+            [ -e "$$f" ] || continue
+            line="$$(cat "$$f" | head -c 300)"
+            step="$$(basename "$$f" .status)"
+            if printf '%s' "$$line" | grep -q '^ok'; then okc=$$((okc+1)); continue; fi
+            failc=$$((failc+1))
+            echo "::error::step $$step: $$line"
+            log="ci-build-win/$$step.log"
+            if [ -f "$$log" ]; then
+              tail -n 3 "$$log" | while IFS= read -r line || [ -n "$$line" ]; do
+                echo "::error::log $$step: $${line:0:700}"
+              done
+            else
+              echo "::error::log $$step: (no $$log)"
+            fi
           done
-          grep -h -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" ci-build-win/*.log 2>/dev/null | head -n 12 | while IFS= read -r line; do
-            echo "::error::${line:0:900}"
+          echo "::notice::steps ok=$$okc failed=$$failc"
+          GH_BIN="$$(command -v gh || command -v gh.exe || true)"
+          for cand in "/c/Program Files/GitHub CLI/gh.exe" "C:/Program Files/GitHub CLI/gh.exe"; do
+            if [ -z "$$GH_BIN" ] && [ -x "$$cand" ]; then GH_BIN="$$cand"; fi
           done
-          # Full digest as a PR comment (best effort).
-          GH_BIN="$(command -v gh || command -v gh.exe || true)"
-          if [ -z "$GH_BIN" ]; then
+          if [ -n "$$GH_BIN" ]; then
+            ERR="$$("$$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md 2>&1)"
+            if [ $$? -eq 0 ]; then
+              echo "::notice::posted digest to PR as comment"
+            else
+              echo "::warning::gh pr comment failed: $${ERR:0:800}"
+            fi
+          else
             echo "::warning::gh CLI not found; digest only available as annotations/artifacts"
-            exit 0
+          fi
+          exit 0
           fi
           if "$GH_BIN" pr comment "${{ github.event.pull_request.number }}" --body-file digest.md; then
             echo "digest posted as PR comment"
