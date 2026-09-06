@@ -41,7 +41,11 @@ public:
 	}
 	bool Load( int fd )
 	{
+#ifdef WIN32
+		position = _lseeki64( fd, 0, SEEK_CUR );
+#else
 		position = lseek( fd, 0, SEEK_CUR );
+#endif
 		dirty = false;
 		if ( read( fd, (void *)&layout, sizeof(layout)) != sizeof(layout) )
 			return false;
@@ -52,7 +56,11 @@ public:
 	{
 		Record record;
 		record.layout.key = Key::Alloc();
+#ifdef WIN32
+		record.position = _lseeki64(fd, 0, SEEK_END);
+#else
 		record.position = lseek(fd, 0, SEEK_END);
+#endif
 		record.dirty = true;
 		return record;
 	}

@@ -55,7 +55,16 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <time.h>
 #include <sys/types.h>
+
+/* BSD wall-clock zone descriptor (mutex.h/benchmark.h use it); mingw does
+ * not provide one. */
+struct timezone
+{
+	int tz_minuteswest;
+	int tz_dsttime;
+};
 
 #ifdef __cplusplus
 extern "C" {
@@ -333,16 +342,11 @@ typedef uint64_t u_int64_t;
 #endif
 
 /* ---- 64-bit file offsets ------------------------------------------------- */
-/* MSVCRT's lseek() takes a 32-bit offset; the storage layer (db.h/tranlog.h
- * page math) needs 64-bit seeks, so every lseek() call in the tree is routed
- * to _lseeki64().  This define sits after all system headers so the CRT's
- * own lseek declaration above is unaffected. */
-#define lseek _lseeki64
-
-/* There is no root account on Windows; report a fixed non-root uid so the
- * "refuse to run as root" check in worldmanager.cpp stays quiet. */
-#define getuid() (1000)
-#define geteuid() (1000)
+/* NOTE: no lseek/getuid macros here on purpose.  A function-style macro would
+ * also rewrite mingw's own later declarations (e.g. <unistd.h> pulled in by
+ * game files), producing conflicting prototypes.  The two live lseek call
+ * sites (tranlog.h) call _lseeki64() directly on Windows, and the single
+ * getuid check (worldmanager.cpp) is compiled out. */
 
 /* ---- functions implemented by winposix.cpp ------------------------------ */
 int         ioctl(int fd, unsigned long request, ...);
