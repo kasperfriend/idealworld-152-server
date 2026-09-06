@@ -15,11 +15,11 @@ DEBUG_VERSION = true
 include ../mk/gcc.defs.mk
 
 INCLUDES += -I$(TOP_SRCDIR)/logclient -I$(TOP_SRCDIR)/log_inl -I$(TOP_SRCDIR)/include
-#DEFINES += -DUSE_HASH_MAP -DUSE_EPOLL -O3 -DUSE_LOGCLIENT -ipo
-DEFINES += -DUSE_HASH_MAP -DUSE_EPOLL -DUSE_LOGCLIENT -g -ggdb 
+#DEFINES += -DUSE_EPOLL -O3 -DUSE_LOGCLIENT -ipo
+DEFINES += -DUSE_EPOLL -DUSE_LOGCLIENT -g -ggdb 
 DEFINES += -D__USER__=\"$(USER)\"
-#LDFLAGS += -DUSE_HASH_MAP -O3 -static -ipo
-LDFLAGS += -DUSE_HASH_MAP -O0
+#LDFLAGS += -O3 -static -ipo
+LDFLAGS += -O0
 
 OUTEROBJS = $(CO_DIR)/matcher.o trade.o ./mailbox.o ./postoffice.o ./auctionmarket.o ./serverattr.o ./pshopmarket.o
 CLEAN += $(OUTEROBJS)

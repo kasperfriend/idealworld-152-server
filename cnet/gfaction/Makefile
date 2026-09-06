@@ -17,9 +17,9 @@ INCLUDES += -I./operations
 LOG_DIR = ../logclient
 INCLUDES += -I$(TOP_SRCDIR)/logclient -I$(TOP_SRCDIR)/log_inl -I$(TOP_SRCDIR)/include
 
-DEFINES += -O3 -DUSE_HASH_MAP -DUSE_EPOLL -DUSE_LOGCLIENT
+DEFINES += -O3 -DUSE_EPOLL -DUSE_LOGCLIENT
 DEFINES += -D__USER__=\"$(USER)\"
-LDFLAGS += -O3 -DUSE_HASH_MAP
+LDFLAGS += -O3
 
 OUTEROBJS = $(CO_DIR)/matcher.o
 CLEAN += $(CO_DIR)/matcher.o

@@ -23,6 +23,62 @@ This runbook assembles everything into a runnable single-host layout.
 
 ---
 
+## 0. Fast path — one-click with the helper scripts
+
+Two scripts in `tools/` automate everything below:
+
+```sh
+# in a checkout of this repository, with binaries from ./tools/ci-build.sh
+# (dist/) or a downloaded release tarball:
+tools/setup-runtime.sh ~/pw [dist|/path/to/release.tar.gz]
+
+# drop your game data package into ~/pw/gs/data/ (see section 5)
+
+cd ~/pw
+./pwctl.sh            # start everything (gs is skipped until data exists)
+./pwctl.sh status     # process + port table
+./pwctl.sh logs gdeliveryd
+./pwctl.sh stop
+```
+
+`setup-runtime.sh` creates the per-daemon directory layout, copies the
+configs from the repo and patches them for a single host:
+
+* every client `address` pointing at the old 172.16.x LAN → `127.0.0.1`
+* `gauthd` listen port `9200` → `29200` (matches `GAuthClient`), and its
+  ARC4 keys mirrored from gdeliveryd's `[GAuthClient]` (`iseckey`/`oseckey`
+  must be swapped between the two ends - shipped values did not match)
+* `gdeliveryd` `[GAuthClient] au_cert=false` (no AU billing authority)
+* `gamedbd` `zoneid` aligned with `gdeliveryd` (`1`)
+* missing WDB `tables=` entries appended (GetStorage returns NULL - and the
+  daemon crashes - for any table not listed; the shipped lists were missing
+  20 gamedbd tables and 2 uniquenamed tables)
+* `/export/...` absolute paths → local dirs, logservice logdir created
+* `gs.conf` data paths `/home/cui/nn/` → `./data/`, map aliases
+  `GTEST` → `localhost`
+* required cwd files staged: `gamedbd/serverlist.sev` (synthesized single
+  zone), `gdeliveryd/{auctionid.txt (from the repo), webtradeid.txt,
+  sysauctionlist.txt, domain.sev, domain2.sev, filters}`,
+  `gfaction/filters`, `gs/restart_zhang` hook stub
+
+`pwctl.sh` starts each daemon as its own process group from its own
+directory (listeners first, then connectors, gs worlds last - see
+`gs/worlds.list`), keeps pidfiles in `pids/`, stdout/stderr in `logs/`,
+shows listening-port state, and stops in reverse order (`gamedbd` /
+`uniquenamed` get SIGUSR1 for a clean DB checkpoint). `gs` starts one
+process per world listed in `gs/worlds.list`.
+
+> Note for 64-bit builds: this tree originally targeted 32-bit x86. Two
+> runtime bugs were fixed to make the daemons start on x86_64: the MMX
+> `mppc` compressor truncated 64-bit pointers (`cnet/io/mppc.h`, now plain
+> C on non-i386), and per-daemon `-DUSE_HASH_MAP` created mixed
+> `hash_map`/`std::map` layouts of shared inline types (removed from the
+> daemon Makefiles). `gauthd` also learned the newer `AnnounceZoneid3`
+> announcement that gdeliveryd sends. If you use release binaries built
+> from an older commit, rebuild from current `main`.
+
+---
+
 ## 1. Host prerequisites
 
 * x86_64 Linux (built on Ubuntu 24.04 runners — a similarly recent distro
@@ -48,6 +104,9 @@ sha256sum -c SHA256SUMS.txt
 ```
 
 ## 3. Assemble the runtime tree
+
+> This section is what `tools/setup-runtime.sh` does automatically (see
+> section 0); it is kept as a reference for manual setups.
 
 Each daemon is started **from its own directory**, next to its config file
 and its `./dbhome` storage directory (all paths in the configs are relative).
