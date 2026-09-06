@@ -1,109 +1,131 @@
 name: Build Server
+
+# Manual only: run it from Actions -> "Build Server" -> "Run workflow".
+# Every run compiles the whole server from source on a clean GitHub runner and
+# publishes the results as assets of a GitHub Release.
 on:
   workflow_dispatch:
+    inputs:
+      name_suffix:
+        description: "Optional suffix added to the release name (e.g. 'rc1')"
+        required: false
+        default: ""
+      strip_binaries:
+        description: "Strip debug info from the binaries before packaging"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
 
+concurrency:
+  group: build-server-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
+    name: linux x86_64 build + release
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # The only LFS objects in this repo are stale prebuilt binaries that the
+          # build regenerates from source, so do not pay for downloading them.
+          lfs: false
+          fetch-depth: 1
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl-dev libpcre3-dev build-essential
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libssl-dev \
+            libpcre3-dev
 
-      - name: Fix libcrypto symlink if needed
+      - name: Show toolchain
         run: |
-          if [ ! -f /usr/lib/x86_64-linux-gnu/libcrypto.so ] && [ -f /usr/lib/x86_64-linux-gnu/libcrypto.so.3 ]; then
-            sudo ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
-            echo "created libcrypto symlink"
-          fi
-          ls -l /usr/lib/x86_64-linux-gnu/libcrypto.so* || true
+          uname -a
+          gcc --version | head -n1
+          g++ --version | head -n1
+          make --version | head -n1
+          dpkg -l 'libssl-dev' 'libpcre3-dev' | tail -n2
 
-      - name: Build cnet perf
+      - name: Build the server
+        env:
+          STRICT: "1"
+        run: ./tools/ci-build.sh
+
+      - name: Strip binaries
+        if: ${{ inputs.strip_binaries }}
+        run: strip dist/bin/*
+
+      - name: Package
         run: |
-          make -C cnet/perf clean
-          make -C cnet/perf -j4
-          ls -lh cnet/perf/libperf.a cnet/perf/x86_64/libperf.a || true
+          set -euo pipefail
+          SHA="${GITHUB_SHA:0:10}"
+          PKG="idealworld-152-server-linux-x86_64"
+          mkdir -p release
+          mv dist "$PKG"
+          tar -czf "release/$PKG.tar.gz" "$PKG"
+          # the executables are also published one by one so they can be grabbed
+          # without unpacking the archive
+          cp "$PKG"/bin/* release/
+          cp "$PKG"/MANIFEST.txt "$PKG"/SHA256SUMS.txt release/
+          {
+            echo "## idealworld-152 server - build ${{ github.run_number }}"
+            echo
+            echo "Built from \`${GITHUB_SHA}\` on \`${RUNNER_NAME}\` by"
+            echo "[${{ github.workflow }} run ${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+            echo
+            echo "Everything in this release was compiled from the sources in this"
+            echo "repository with \`./tools/ci-build.sh\` (no prebuilt objects)."
+            echo
+            echo "### Contents"
+            echo
+            echo "| archive | size |"
+            echo "| --- | --- |"
+            for f in release/*.tar.gz; do
+              echo "| \`$(basename "$f")\` | $(du -h "$f" | cut -f1) |"
+            done
+            echo
+            echo '```'
+            cat "$PKG"/MANIFEST.txt
+            echo '```'
+          } > release/RELEASE_NOTES.md
+          echo "### release assets" >> "$GITHUB_STEP_SUMMARY"
+          ls -lh release | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Build cnet (gamed, io, gdbclient libs + daemons)
-        run: |
-          make -C cnet -f MakeGame clean || true
-          make -C cnet -f MakeGame -j4
-          echo "=== cnet binaries ==="
-          ls -lh cnet/glinkd/glinkd cnet/gdeliveryd/gdeliveryd cnet/gauthd/gauthd cnet/gamedbd/gamedbd.wdb cnet/gamed/libgsPro2.a cnet/io/libgsio.a cnet/gdbclient/libdbCli.a 2>&1 | head -n 50
-
-      - name: Build cskill
-        run: |
-          make -C cskill/skill -f ../Makefilelib clean || true
-          make -C cskill/skill -f ../Makefilelib -j4
-          ls -lh cskill/skill/libskill.a 2>&1 | head
-
-      - name: Build cgame libs
-        run: |
-          make -C cgame/collision -j4 || true
-          make -C cgame/io -j4 || true
-          make -C cgame/libgs -j4 || true
-          ls -lh cgame/collision/libTrace.a cgame/libgs/gs/*.o cgame/libgs/io/*.o cgame/libgs/db/*.o cgame/libgs/sk/*.o 2>&1 | head -n 50
-
-      - name: Build cgame gs
-        run: |
-          make -C cgame clean || true
-          make -C cgame -j4
-          echo "=== cgame gs ==="
-          ls -lh cgame/gs/gs 2>&1 | head
-          find cgame -maxdepth 3 -type f -executable | head -n 50
-
-      - name: Package binaries
-        if: always()
-        run: |
-          mkdir -p dist
-          # cnet daemons
-          cp -v cnet/glinkd/glinkd dist/ 2>&1 | head
-          cp -v cnet/gdeliveryd/gdeliveryd dist/ 2>&1 | head
-          cp -v cnet/gauthd/gauthd dist/ 2>&1 | head
-          cp -v cnet/gamedbd/gamedbd.wdb dist/gamedbd 2>&1 | head
-          cp -v cnet/gamed/libgsPro2.a dist/ 2>&1 | head
-          cp -v cnet/io/libgsio.a dist/ 2>&1 | head
-          cp -v cnet/gdbclient/libdbCli.a dist/ 2>&1 | head
-          cp -v cnet/perf/libperf.a dist/ 2>&1 | head
-          # cskill
-          cp -v cskill/skill/libskill.a dist/ 2>&1 | head
-          # cgame
-          cp -v cgame/gs/gs dist/gs 2>&1 | head
-          cp -v cgame/libcommon.a dist/ 2>&1 | head
-          cp -v cgame/libonline.a dist/ 2>&1 | head
-          cp -v cgame/collision/libTrace.a dist/ 2>&1 | head
-          # also collect any built exes
-          find cnet -type f -executable -name "g*" | xargs -I{} cp -v {} dist/ 2>&1 | head -n 50
-          find cgame -type f -executable | xargs -I{} cp -v {} dist/ 2>&1 | head -n 50
-          tar -czf server-binaries.tar.gz -C dist . 2>&1 | head
-          ls -lh dist/ server-binaries.tar.gz 2>&1 | head -n 100
-
-      - name: Upload artifact
+      - name: Upload build log artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: server-binaries
-          path: |
-            dist/
-            server-binaries.tar.gz
-          if-no-files-found: warn
+          name: build-logs-${{ github.run_number }}
+          path: .ci-build/
+          if-no-files-found: ignore
+          retention-days: 14
 
-      - name: Create Release
-        if: always()
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          body: "Automated build of server binaries (cnet/cskill/cgame) on x86_64."
+          name: >-
+            Server binaries - build ${{ github.run_number }}${{
+              inputs.name_suffix && format(' {0}', inputs.name_suffix) || '' }}
+          body_path: release/RELEASE_NOTES.md
           files: |
-            server-binaries.tar.gz
-            dist/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            release/*.tar.gz
+            release/*.txt
+            release/glinkd
+            release/gdeliveryd
+            release/gauthd
+            release/gfactiond
+            release/gamedbd
+            release/uniquenamed
+            release/logservice
+            release/gs
+          prerelease: true
+          fail_on_unmatched_files: true
