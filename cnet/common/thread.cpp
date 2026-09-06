@@ -153,6 +153,42 @@ void Thread::Pool::Run( Policy * policy ,bool wantreturn)
 	if( wantreturn )
 		return;
 
+#ifdef WIN32
+	/* Windows: no POSIX interval-timer signals.  Tick IntervalTimer and
+	 * Timer on a timer wait and dispatch SIGHUP/SIGUSR1/SIGUSR2 raised
+	 * through the winposix signal shim (kill/console events). */
+	{
+		HANDLE ev = wp_signal_event();
+		unsigned int tick = (unsigned int)(IntervalTimer::Resolution() / 1000);
+		if (tick == 0) tick = 1;
+		int update_time = time(NULL);
+		for (;;)
+		{
+			WaitForSingleObject(ev, tick);
+			IntervalTimer::Update();
+			{
+				int now = time(NULL);
+				if (now > update_time)
+				{
+					Timer::Update();
+					update_time = now;
+				}
+			}
+			if (0 == Size())
+			{
+				Sleep(5);
+				exit(0);
+			}
+			unsigned long bits = wp_signal_take();
+			if (bits & (1UL << SIGUSR1))
+				sigusr1_handler(SIGUSR1);
+			if (bits & (1UL << SIGUSR2))
+				s_ppolicy->OnSIGUSR2();
+			if (bits & (1UL << SIGHUP))
+				s_ppolicy->OnSIGHUP();
+		}
+	}
+#else
 	struct sigaction act;
 	memset( &act, 0, sizeof(act) );
 	act.sa_handler = sighandler_null;
@@ -209,6 +245,8 @@ void Thread::Pool::Run( Policy * policy ,bool wantreturn)
 		else if( SIGHUP == val )
 			s_ppolicy->OnSIGHUP( );
 	}
+#endif
+
 }
 #endif
 }

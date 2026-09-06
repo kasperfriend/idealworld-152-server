@@ -1,16 +1,75 @@
 /*
  * implementing statistic.
  */
+#ifndef __GNET_STATISTIC_H__
+#define __GNET_STATISTIC_H__
+
 #ifdef WIN32
 
 #define STAT_MIN5(ds,value)
 #define STAT_HOUR(ds,value)
 #define STAT_DAY(ds,value)
 
-#else
+/* The real collector aggregates counters in memory and periodically dumps
+ * them over syslog.  On Windows we keep the same class/interface so that
+ * log.h and friends compile, but do not spin up the dump machinery. */
+#include <string>
+#include <stdint.h>
 
-#ifndef __GNET_STATISTIC_H__
-#define __GNET_STATISTIC_H__
+namespace GNET
+{
+	class Statistic
+	{
+	public:
+		enum StatInterval { min5, hour, day };
+		int     m_interval;
+		int64_t m_max;
+		int64_t m_min;
+		int64_t m_cur;
+		int64_t m_cnt;
+		int64_t m_sum;
+
+		Statistic() : m_interval(min5), m_max(0), m_min(0),
+			m_cur(0), m_cnt(0), m_sum(0) { }
+
+		void update( int64_t __delta )
+		{
+			m_cur = __delta;
+			m_cnt ++;
+			m_sum += __delta;
+			if (__delta > m_max) m_max = __delta;
+			if (0 == m_min || __delta < m_min) m_min = __delta;
+		}
+
+		typedef bool (*EnumerateFunc)( const std::string & __name,
+		                               const Statistic * __pstat );
+		static void enumerate( EnumerateFunc __fn, StatInterval __iv )
+		{
+			(void)__fn; (void)__iv;
+		}
+
+		static Statistic * GetInstance( const std::string & __name )
+		{
+			(void)__name;
+			static Statistic s_stat;
+			return &s_stat;
+		}
+		static Statistic * GetStatHour( const std::string & __name )
+		{
+			(void)__name;
+			static Statistic s_stat;
+			return &s_stat;
+		}
+		static Statistic * GetStatDay( const std::string & __name )
+		{
+			(void)__name;
+			static Statistic s_stat;
+			return &s_stat;
+		}
+	};
+}
+
+#else
 
 #include <iostream>
 #include <string>
@@ -35,16 +94,16 @@
 namespace GNET
 {
 	/*
-			Í³¼ÆÀàµÄÊ¹ÓÃ¡£Í³¼ÆÐÅÏ¢»áÍ¨¹ýsyslogdÃ¿¸ô5·ÖÖÓ×Ô¶¯±£´æµ½/var/log/statinfoÎÄ¼þÖÐ£¬
-			²¢Í¨¹ýcricketÔÚä¯ÀÀÆ÷ÖÐÏÔÊ¾£¬²é¿´Í³¼Æ½á¹û¡£
+			Í³ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½Ã¡ï¿½Í³ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½Í¨ï¿½ï¿½syslogdÃ¿ï¿½ï¿½5ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½æµ½/var/log/statinfoï¿½Ä¼ï¿½ï¿½Ð£ï¿½
+			ï¿½ï¿½Í¨ï¿½ï¿½cricketï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½é¿´Í³ï¿½Æ½ï¿½ï¿½ï¿½ï¿½
 
-			ÈçÏÂËùÊ¾£¬Í³¼ÆQQµÄÏûÏ¢¸öÊý£¬×¢Òâ"QQ.Msg"ÊÇ¸ÃÍ³¼ÆµÄ±êÊ¶£¬Ó¦¸ÃÎ¨Ò»¡£
+			ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½Í³ï¿½ï¿½QQï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×¢ï¿½ï¿½"QQ.Msg"ï¿½Ç¸ï¿½Í³ï¿½ÆµÄ±ï¿½Ê¶ï¿½ï¿½Ó¦ï¿½ï¿½Î¨Ò»ï¿½ï¿½
 
 			Statistic * pstat = GNET::Statistic::GetInstance(std::string("QQ.Msg"));
 
-			¿ÉÒÔ½«pstat±£´æÏÂÀ´£¬Ã¿´Î·¢ËÍÏûÏ¢Ê±£¬µ÷ÓÃ
-				pstat->update( 1 ); // 1Îª±¾´Î·¢ËÍµÄÏûÏ¢¸öÊý
-				»òÕß GNET::Statistic::GetInstance(std::string("QQ.Msg"))->update(1);
+			ï¿½ï¿½ï¿½Ô½ï¿½pstatï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã¿ï¿½Î·ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+				pstat->update( 1 ); // 1Îªï¿½ï¿½ï¿½Î·ï¿½ï¿½Íµï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½
+				ï¿½ï¿½ï¿½ï¿½ GNET::Statistic::GetInstance(std::string("QQ.Msg"))->update(1);
 	*/
 	class Statistic
 	{
@@ -209,6 +268,6 @@ namespace GNET
 	};
 }
 
-#endif // __GNET_STATISTIC_H__
-
 #endif // WIN32
+
+#endif // __GNET_STATISTIC_H__

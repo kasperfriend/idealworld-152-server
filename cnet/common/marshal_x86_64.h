@@ -18,6 +18,12 @@
 
 namespace GNET
 {
+/* The OctetsStream container operators below use MarshalContainer before its
+ * definition later in this header.  g++ tolerates that (dependent-name lookup
+ * delayed to instantiation) but clang requires it to be declared first. */
+template<typename Container> class STLContainer;
+template<typename Container>
+STLContainer<Container> MarshalContainer(const Container &c);
 
 template<typename T>
 inline T& remove_const(const T &t) { return const_cast<T&>(t); }

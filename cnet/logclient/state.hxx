@@ -1,11 +1,7 @@
 #ifndef __GNET_LOGCLIENT_STATE
 #define __GNET_LOGCLIENT_STATE
 
-#ifdef WIN32
-#include "gnproto.h"
-#else
 #include "protocol.h"
-#endif
 
 namespace GNET
 {

@@ -1,0 +1,112 @@
+/*
+ * ext/hash_map - SGI-style hash_map over std::unordered_map.
+ *
+ * This header is ONLY used when compiling the port locally with clang/libc++
+ * (zig).  The real MSYS2/GCC build uses libstdc++'s own <ext/hash_map>.
+ */
+#ifndef _WP_EXT_HASH_MAP
+#define _WP_EXT_HASH_MAP
+
+#include <unordered_map>
+#include <unordered_set>
+#include <functional>
+#include <cstddef>
+
+namespace __gnu_cxx
+{
+
+template<typename _Key>
+struct hash
+{
+	size_t operator()(const _Key &__x) const
+	{
+		return std::hash<_Key>()(__x);
+	}
+};
+
+template<>
+struct hash<char *>
+{
+	size_t operator()(const char *__s) const
+	{
+		unsigned long __h = 0;
+		for (const char *p = __s; *p; ++p)
+			__h = 5 * __h + (unsigned char)*p;
+		return size_t(__h);
+	}
+};
+
+template<>
+struct hash<const char *>
+{
+	size_t operator()(const char *__s) const
+	{
+		unsigned long __h = 0;
+		for (const char *p = __s; *p; ++p)
+			__h = 5 * __h + (unsigned char)*p;
+		return size_t(__h);
+	}
+};
+
+template<typename _Key, typename _Tp, typename _HashFn = hash<_Key>,
+         typename _EqualKey = std::equal_to<_Key>,
+         typename _Alloc = std::allocator<std::pair<const _Key, _Tp> > >
+class hash_map
+{
+	typedef std::unordered_map<_Key, _Tp, _HashFn, _EqualKey> map_t;
+	map_t m_map;
+
+public:
+	typedef typename map_t::key_type key_type;
+	typedef _Tp data_type;
+	typedef _Tp mapped_type;
+	typedef typename map_t::value_type value_type;
+	typedef typename map_t::size_type size_type;
+	typedef typename map_t::iterator iterator;
+	typedef typename map_t::const_iterator const_iterator;
+
+	hash_map() {}
+	explicit hash_map(size_type __n) : m_map(__n) {}
+	hash_map(size_type __n, const _HashFn &__hf) : m_map(__n, __hf) {}
+	hash_map(const hash_map &__x) : m_map(__x.m_map) {}
+	template<typename _InputIterator>
+	hash_map(_InputIterator __f, _InputIterator __l) : m_map(__f, __l) {}
+	hash_map &operator=(const hash_map &__x) { m_map = __x.m_map; return *this; }
+
+	iterator begin() { return m_map.begin(); }
+	iterator end() { return m_map.end(); }
+	const_iterator begin() const { return m_map.begin(); }
+	const_iterator end() const { return m_map.end(); }
+	size_type size() const { return m_map.size(); }
+	bool empty() const { return m_map.empty(); }
+	void clear() { m_map.clear(); }
+	void swap(hash_map &__x) { m_map.swap(__x.m_map); }
+
+	iterator find(const key_type &__k) { return m_map.find(__k); }
+	const_iterator find(const key_type &__k) const { return m_map.find(__k); }
+	size_type count(const key_type &__k) const { return m_map.count(__k); }
+
+	std::pair<iterator, bool> insert(const value_type &__v)
+	{
+		return m_map.insert(__v);
+	}
+	iterator insert(iterator __hint, const value_type &__v)
+	{
+		return m_map.insert(__hint, __v);
+	}
+	template<typename _InputIterator>
+	void insert(_InputIterator __f, _InputIterator __l)
+	{
+		m_map.insert(__f, __l);
+	}
+
+	_Tp &operator[](const key_type &__k) { return m_map[__k]; }
+
+	size_type erase(const key_type &__k) { return m_map.erase(__k); }
+	void erase(iterator __it) { m_map.erase(__it); }
+	void erase(iterator __f, iterator __l) { m_map.erase(__f, __l); }
+};
+
+} /* namespace __gnu_cxx */
+
+#endif

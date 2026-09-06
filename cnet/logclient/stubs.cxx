@@ -1,9 +1,4 @@
-#ifdef WIN32
-#include <winsock2.h>
-#include "gncompress.h"
-#else
 #include "binder.h"
-#endif
 #include "statinfovital.hpp"
 #include "statinfo.hpp"
 #include "remotelogvital.hpp"

@@ -1,13 +1,7 @@
 #include "callid.hxx"
 
-#ifdef WIN32
-#include <winsock2.h>
-#include "gnproto.h"
-#include "gncompress.h"
-#else
 #include "protocol.h"
 #include "binder.h"
-#endif
 
 namespace GNET
 {

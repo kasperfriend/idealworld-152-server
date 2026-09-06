@@ -44,3 +44,7 @@ cgame/common/cmtest*.conf
 *~
 *.orig
 *.rej
+
+# windows cross-build (tools/ci-build-win.sh) staging area and per step logs
+/.ci-build-win/
+/dist-win/
