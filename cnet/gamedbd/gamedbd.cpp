@@ -23,19 +23,6 @@
 #include "xmlversion.h"
 #include "friendextgain.h"
 
-/* The Windows build driver overrides DEFINES wholesale, so __USER__ (passed
- * via -D__USER__=... by the daemon Makefiles on Linux) may be undefined. */
-#ifdef __USER__
-#undef __USER__
-#endif
-#define __USER__ "unknown"
-#ifndef __DATE__
-#define __DATE__ "WinBuild"
-#endif
-#ifndef __TIME__
-#define __TIME__ "WinBuild"
-#endif
-
 using namespace GNET;
 
 static char conf_filename[256];
@@ -84,7 +71,8 @@ int main(int argc, char *argv[])
 {
 	if (argc < 2 || access(argv[1], R_OK) == -1 )
 	{
-	printf("Compiled By unknown, WinBuild WinBuild\n");
+		printf("Compiled " __DATE__ " " __TIME__ "
+");
 		printhelp(argv[0]);
 		exit(-1);
 	}

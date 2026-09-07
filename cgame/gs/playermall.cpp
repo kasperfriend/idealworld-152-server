@@ -189,8 +189,12 @@ InitMall(netgame::mall & __mall, itemdataman & dataman, const abase::vector<MALL
 		time_t t1 = time(NULL);
 		struct tm tm1;
 		localtime_r(&t1, &tm1);
+#ifdef WIN32
 		long wp_tz = 0; _get_timezone(&wp_tz);
 		int tz_adjust = wp_tz;	//gshop编辑器保存的时间是gmtime,sale_time根据gs运行的时区进行调整
+#else
+		int tz_adjust = - tm1.tm_gmtoff;	//gshop编辑器保存的时间是gmtime,sale_time根据gs运行的时区进行调整
+#endif
 		for(size_t j = 0; j < 4;  j ++)
 		{
 			if(__list[i].list[j].cash_need <= 0) break;

@@ -29,19 +29,6 @@
 #include "serverattr.h"
 #include "stockexchange.h"
 #include "xmlversion.h"
-
-/* The Windows build driver overrides DEFINES wholesale, so __USER__ (passed
- * via -D__USER__=... by the daemon Makefiles on Linux) may be undefined. */
-#ifdef __USER__
-#undef __USER__
-#endif
-#define __USER__ "unknown"
-#ifndef __DATE__
-#define __DATE__ "WinBuild"
-#endif
-#ifndef __TIME__
-#define __TIME__ "WinBuild"
-#endif
 #include "referencemanager.h"
 #include "rewardmanager.h"
 #include "webtrademarket.h"
@@ -88,7 +75,8 @@ int main(int argc, char *argv[])
 		switch(opt)
 		{
 			case 'v':
-				printf("Compiled By unknown, WinBuild WinBuild\n");
+		printf("Compiled " __DATE__ " " __TIME__ "
+");
 				printf("%s\n", XMLVERSION);
 				exit(0);
 			default:

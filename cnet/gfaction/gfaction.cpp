@@ -11,25 +11,13 @@
 #include "uniquenameclient.hpp"
 #include "factiondb.h"
 
-/* The Windows build driver overrides DEFINES wholesale, so __USER__ (passed
- * via -D__USER__=... by the daemon Makefiles on Linux) may be undefined. */
-#ifdef __USER__
-#undef __USER__
-#endif
-#define __USER__ "unknown"
-#ifndef __DATE__
-#define __DATE__ "WinBuild"
-#endif
-#ifndef __TIME__
-#define __TIME__ "WinBuild"
-#endif
-
 using namespace GNET;
 int main(int argc, char *argv[])
 {
 	if (argc != 2 || access(argv[1], R_OK) == -1)
 	{
-		printf("Compiled By unknown, WinBuild WinBuild\n");
+		printf("Compiled " __DATE__ " " __TIME__ "
+");
 		std::cerr << "Usage: " << argv[0] << " configurefile" << std::endl;
 		exit(-1);
 	}
