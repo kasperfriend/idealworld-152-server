@@ -33,12 +33,18 @@ cd "$ROOT" || exit 1
 
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 4)}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist-win}"
-STATE="$ROOT/.ci-build-win"
+STATE="$ROOT/ci-build-win"
 TC="$STATE/tc"
 STRICT="${STRICT:-1}"
 
 rm -rf "$STATE" "$DIST_DIR"
 mkdir -p "$STATE" "$TC" "$DIST_DIR/bin" "$DIST_DIR/lib"
+
+# Like the Linux driver: never reuse objects/archives from a previous (or
+# Linux) build; every step below regenerates what it needs.
+echo "=== removing stale build artifacts ==="
+find cnet cgame cskill -name '*.o' -delete 2>/dev/null
+find cnet cgame cskill -name '*.a' -delete 2>/dev/null
 
 declare -a STEP_RESULT
 FAILED=0
@@ -56,7 +62,7 @@ step() { # step <name> <command...>
 		FAILED=$((FAILED+1))
 		printf 'failed (exit %d)\n' "$rc" > "$STATE/$name.status"
 		echo "FAILED (exit $rc) - see $STATE/$name.log"
-		grep -E "error:|Error [0-9]+|undefined reference|undefined symbol|No such file|fatal error" \
+		grep -E "error:|Error [0-9]+|undefined reference|undefined symbol|multiple definition|cannot find|No such file|fatal error" \
 			"$STATE/$name.log" | head -n 80
 		tail -n 15 "$STATE/$name.log"
 	fi
@@ -88,38 +94,67 @@ EOF
 	cat > "$TC/ld" <<EOF
 #!/usr/bin/env bash
 exec "$ZIG" c++ -target x86_64-windows-gnu -D__MINGW_FORTIFY_LEVEL=0 \
-	"\$@" -lws2_32 -lwsock32 -lwinpthread -lbcrypt \
+	"\$@" \
 	"$STATE/winposix.a" "$STATE/winiconv.o" "$STATE/wsyslog.o" \
-	"$STATE/wrusage.o" "$STATE/wpmd5.o" "$STATE/wpcre.o"
+	"$STATE/wrusage.o" "$STATE/wpmd5.o" "$STATE/wpcre.o" "$STATE/wpopenssl.o" \
+	"$STATE/wpthread.o" \
+	-lbcrypt -lpsapi
 EOF
 	chmod +x "$TC/cc" "$TC/cxx" "$TC/ld"
-	# cskill's Makefilelib adds -finput-charset=ISO-8859-1/-fexec-charset=...
-	# which clang does not accept; strip them (gcc-only flags).
+	# cskill/Makefilelib hardcodes -finput-charset/-fexec-charset=ISO-8859-1
+	# (GBK bytes, byte-preserving).  zig's driver rejects that value, so
+	# rewrite it to UTF-8: the cskill-u8 step has already escaped every
+	# high byte as \xNN, so UTF-8 in/out preserves bytes exactly.
 	cat > "$TC/cxx_ncs" <<EOF
 #!/usr/bin/env bash
 args=()
-while [ \$# -gt 0 ]; do
-	case "\$1" in
-		-finput-charset=*|-fexec-charset=*) shift ;;
-		*) args+=("\$1"); shift ;;
+for a in "\$@"; do
+	case "\$a" in
+	-finput-charset=ISO-8859-1) ;;
+	# NB: -fexec-charset is STRIPPED, not rewritten: an explicit UTF-8
+	# exec charset makes clang validate (and reject) the escaped GBK bytes
+	# in string literals, while the default passes \xNN through untouched.
+	-fexec-charset=ISO-8859-1) ;;
+	*) args+=("\$a");;
 	esac
 done
 exec "$TC/cxx" "\${args[@]}"
 EOF
 	chmod +x "$TC/cxx_ncs"
+	# cskill passes -finput-charset/-fexec-charset=ISO-8859-1 (GBK bytes);
+	# zig's driver rejects that value, so CSKCC (cxx_ncs above) rewrites it
+	# to UTF-8 (the cskill-u8 step pre-escapes every high byte).
 	WP_CC="$TC/cxx"; WP_CXX="$TC/cxx"; WP_LD="$TC/ld"
 	CSKCC="$TC/cxx_ncs"
 	WP_AR="ar"
+	WP_CCBIN="$TC/cc"
 	# avoid linking pcre/openssl when they are not available
 	PCRELIB=""
 	CRYPTOLIB=""
+	DLLIB=""
+	PTHREADLIB=""
+	WS2LIB=""
 else
+	WP_CC="${WP_CC:-gcc}"; WP_CXX="${WP_CXX:-g++}"; WP_AR="${WP_AR:-ar}"
 	echo "toolchain: native ($WP_CC / $WP_CXX)"
-	WP_CC="${WP_CC:-gcc}"; WP_CXX="${WP_CXX:-g++}"
-	WP_LD="${WP_LD:-$WP_CXX}"; WP_AR="${WP_AR:-ar}"
+	# Native link wrapper: same role as the zig $TC/ld above, minus the
+	# zig-only OpenSSL stubs (native links the real -lcrypto).
+	cat > "$TC/ld" <<EOF
+#!/usr/bin/env bash
+exec "$WP_CXX" "\$@" \
+	"$STATE/winposix.a" "$STATE/winiconv.o" "$STATE/wsyslog.o" \
+	"$STATE/wrusage.o" \
+	-lws2_32 -lwinpthread -lbcrypt -lpsapi
+EOF
+	chmod +x "$TC/ld"
+	WP_LD="$TC/ld"
 	CSKCC="$WP_CXX"
+	WP_CCBIN="$WP_CC"
 	PCRELIB="-lpcre"
 	CRYPTOLIB="-lcrypto"
+	PTHREADLIB="-lwinpthread"
+	DLLIB=""
+	WS2LIB=""
 fi
 
 # ---------------------------------------------------------------- flags
@@ -137,7 +172,8 @@ NETINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cnet -I$ROOT/cnet/inc -I$ROOT/cnet/include \
  -I$ROOT/cnet/gfaction -I$ROOT/cnet/gfaction/operations -I$ROOT/cnet/gauthd \
  -I$ROOT/cnet/glinkd -I$ROOT/cnet/uniquenamed -I$ROOT/cnet/logservice \
  -I$ROOT/cnet/log_inl \
- -I$ROOT/cnet/gdbclient -I$ROOT/cskill -I$ROOT/cskill/header/include"
+ -I$ROOT/cnet/gdbclient -I$ROOT/cskill -I$ROOT/cskill/header/include \
+ -I$ROOT/cnet/gfaction/operations"
 
 GAMEINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cgame/include -I$ROOT/cgame \
  -I$ROOT/cgame/common -I$ROOT/cgame/io -I$ROOT/cgame/collision \
@@ -150,26 +186,46 @@ GAMEINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cgame/include -I$ROOT/cgame \
 # Linux Makefiles append these with `+=`, which command-line overrides
 # discard, so the driver re-applies them.
 D_NET="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE -D__MINGW_FORTIFY_LEVEL=0"
-D_GAME="-DWIN32 -D_DEBUG -D__THREAD_SPIN_LOCK__ -D__MINGW_FORTIFY_LEVEL=0"
-D_HASH="-DUSE_HASH_MAP"
+D_GAME="-DWIN32 -D_DEBUG -D__THREAD_SPIN_LOCK__ -D__MINGW_FORTIFY_LEVEL=0 -DUSE_LOGCLIENT"
 D_LOGC="-DUSE_LOGCLIENT"
 D_WDB="-DUSE_WDB -DMPPC_4WAY -DUSE_TRANSACTION -D_FILE_OFFSET_BITS=64"
 
-CFLAGS="-std=gnu++14 -fpermissive -w -O0 -fno-omit-frame-pointer -include winposix.h -include cstring -include cstdio -include cstdlib -include cstdint -include climits -include ctime"
+CFLAGS="-std=gnu++14 -fpermissive -Wno-narrowing -w -O0 -fno-omit-frame-pointer -include winposix.h -include cstring -include cstdio -include cstdlib -include cstdint -include iconv.h -include climits -include ctime"
+if [ "$MODE" = "zig" ]; then
+	# clang diagnoses concrete incomplete-type member access in template
+	# bodies at definition (two-phase); this tree was written for lax
+	# compilers (gcc 4.1 warns, MSVC defers). Defer like MSVC so types
+	# defined later in the TU (gnpc/gplayer vs protocol_imp.h) resolve
+	# at instantiation instead of erroring.
+	CFLAGS="$CFLAGS -fdelayed-template-parsing"
+fi
+if [ "$MODE" != "zig" ]; then
+	# Current mingw-w64 CRTs already export clock_gettime(); tell
+	# winposix.cpp to skip its own copy (a duplicate C definition
+	# would fail the winposix link).
+	CFLAGS="$CFLAGS -DWP_HAVE_CLOCK_GETTIME=1 -Wa,-mbig-obj"
+fi
 
 # cnet daemons are built through their own Makefiles with fully overridden
 # DEFINES / INCLUDES / LDFLAGS.
-build_net_daemon() { # <stepname> <dir> <target> <extra defs> <extra libs>
-	local name="$1" dir="$2" target="$3" defs="$4" libs="$5"
+build_net_daemon() { # <stepname> <dir> <target> <extra defs>
+	local name="$1" dir="$2" target="$3" defs="$4"
+	# Shared _m.o are reused across daemons; stale flagless copies would
+	# reintroduce header-inline Log defs next to log_m.o strong defs
+	# (COFF COMDAT-vs-plain duplicate). Rebuild with this daemon's flags.
+	rm -f "$ROOT/cnet/common/"*_m.o "$ROOT/cnet/io/"*_m.o "$ROOT/cnet/logclient/"*_m.o
 	step "$name" make -C "$ROOT/$dir" \
 		CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
 		DEFINES="$D_NET $CFLAGS $defs" \
-		INCLUDES="$NETINC" LDFLAGS="-O0" CFLAGS="$CFLAGS" \
-		"$target" -j"$JOBS"
+		INCLUDES="-I$ROOT/$dir $NETINC" LDFLAGS="-O0" CFLAGS="$CFLAGS" \
+		PCRELIB="$PCRELIB" CRYPTOLIB="$CRYPTOLIB" DLLIB="$DLLIB" \
+		"$target" -k -j"$JOBS"
 }
 
 copy_pair() { # <src> <dst>
 	local src="$1" dst="$2"
+	# -o glinkd yields glinkd.exe on Windows; -o gamedbd.wdb stays as-is.
+	if [ ! -f "$src" ] && [ -f "$src.exe" ]; then src="$src.exe"; fi
 	if [ -f "$src" ]; then
 		cp -f "$src" "$DIST_DIR/$dst" && echo "  $(basename "$dst") <- $src"
 	else
@@ -181,28 +237,31 @@ copy_pair() { # <src> <dst>
 
 # ------------------------------------------------------------------ winposix
 echo "=== building win32 shim layer ==="
-step "winposix" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 ${P2:+-I$P2} -c win32/winposix.cpp -o '$STATE/winposix.o' && $WP_AR crs '$STATE/winposix.a' '$STATE/winposix.o'"
+step "winposix" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -D_FILE_OFFSET_BITS=64 -I$P1 ${P2:+-I$P2} -c win32/winposix.cpp -o '$STATE/winposix.o' && $WP_AR crs '$STATE/winposix.a' '$STATE/winposix.o'"
 step "winiconv" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 ${P2:+-I$P2} -c win32/winiconv.cpp -o '$STATE/winiconv.o'"
 step "wsyslog" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 ${P2:+-I$P2} -c win32/wsyslog.cpp -o '$STATE/wsyslog.o'"
 step "wrusage" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 ${P2:+-I$P2} -c win32/wrusage.cpp -o '$STATE/wrusage.o'"
 if [ "$MODE" = "zig" ]; then
 	step "wpmd5" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 -I$P2 -c win32/wpmd5.cpp -o '$STATE/wpmd5.o'"
 	step "wpcre" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 -I$P2 -c win32/wpcre.cpp -o '$STATE/wpcre.o'"
+	step "wpopenssl" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 -I$P2 -c win32/wpopenssl.cpp -o '$STATE/wpopenssl.o'"
+	step "wpthread" bash -c "cd '$ROOT' && $WP_CXX $D_NET $CFLAGS -I$P1 -I$P2 -c win32/wpthread.cpp -o '$STATE/wpthread.o'"
 fi
 
 # -------------------------------------------------------------------- perf
-PF="md5 sha1 rc4 mppc256 base64"
-if [ "$MODE" = "native" ]; then PF="$PF crc32 aes bf"; fi
-PFOBJ=""
-for _f in $PF; do PFOBJ="$PFOBJ $_f.o"; done
-PFOBJ="${PFOBJ# }"
+# The x86_64/*.s files are GAS/Linux-only, so Windows builds perf from
+# portable C: win32/wperf.c provides the live symbols (crc32 and the base64
+# pair) while the remaining members are empty placeholders that keep the
+# link layout identical to Linux.
 step "cnet-perf" bash -c "
-	cd '$ROOT/cnet/perf/x86_64'
-	rm -f libperf.a md5.o sha1.o rc4.o mppc256.o base64.o crc32.o aes.o bf.o
-	for f in $PF; do
-		$WP_CC -c \$f.s -o \$f.o || exit 1
+	cd '$ROOT' || exit 1
+	mkdir -p cnet/perf/x86_64
+	$WP_CCBIN -O2 -w -c win32/wperf.c -o cnet/perf/x86_64/wperf.o || exit 1
+	for f in md5 sha1 rc4 mppc256 aes bf crc32 base64; do
+		echo \"int wp_perf_empty_\$f = 0;\" > '$STATE/empty_'\$f.c
+		$WP_CCBIN -O2 -w -c '$STATE/empty_'\$f.c -o cnet/perf/x86_64/\$f.o || exit 1
 	done
-	$WP_AR crs libperf.a $PFOBJ
+	(cd cnet/perf/x86_64 && $WP_AR crs libperf.a wperf.o md5.o sha1.o rc4.o mppc256.o aes.o bf.o crc32.o base64.o) || exit 1
 "
 cp -f "$ROOT/cnet/perf/x86_64/libperf.a" "$ROOT/cnet/perf/libperf.a" 2>/dev/null || true
 copy_pair cnet/perf/libperf.a lib/libperf.a
@@ -216,51 +275,75 @@ cnet_lib() { # <stepname> <dir> <makefile> <target> <extra defs> <extra includes
 	[ -n "$mf" ] && mfarg="-f $mf"
 	step "$name" make -C "$ROOT/$dir" $mfarg \
 		CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
-		DEFINES="$D_NET $CFLAGS $defs" INCLUDES="$NETINC $extrainc" \
-		LDFLAGS="-O0" CFLAGS="$CFLAGS" "$tgt" -j"$JOBS"
+		DEFINES="$D_NET $CFLAGS $defs" INCLUDES="-I$ROOT/$dir $NETINC $extrainc" \
+		LDFLAGS="-O0" CFLAGS="$CFLAGS" "$tgt" -k -j"$JOBS"
 }
-cnet_lib "cnet-io-lib"     cnet/io      ""       lib ""  ""
-cnet_lib "cnet-gamed-lib"  cnet/gamed   ""       lib "-D__USE_SPEC_GAMEDATASEND__" "-I$ROOT/cnet/gamed/header -I$ROOT/cnet/gamed/header/include/common"
-cnet_lib "cnet-gdbclient"  cnet/gdbclient ""     lib ""  ""
+cnet_lib "cnet-io-lib"     cnet/io      ""       lib "-DUSE_LOGCLIENT"  ""
+cnet_lib "cnet-gamed-lib"  cnet/gamed   ""       lib "-D__USE_SPEC_GAMEDATASEND__ -DUSE_LOGCLIENT" "-I$ROOT/cnet/gamed/header -I$ROOT/cnet/gamed/header/include/common"
+cnet_lib "cnet-gdbclient"  cnet/gdbclient ""     lib "-DUSE_LOGCLIENT"  ""
 cnet_lib "cnet-logclient"  cnet/logclient Makefile.gs lib "-DUSE_LOGCLIENT" ""
-CSKINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cskill -I$ROOT/cskill/expr \
- -I$ROOT/cskill/header -I$ROOT/cskill/header/include -I$ROOT/cskill/skill \
- -I$ROOT/cskill/skills -I$ROOT/cskill/simulator -I$ROOT/cskill/gen/src"
-step "cskill-lib" make -C "$ROOT/cskill/skill" -f ../Makefilelib \
+# The cskill tree is GBK-encoded and Makefilelib forces ISO-8859-1 charsets,
+# which zig rejects.  For zig, compile an escaped copy (every high byte as
+# \xNN, byte-identical output); native gcc reads the GBK in place.
+CSKSRC="$ROOT/cskill"
+if [ "$MODE" = "zig" ]; then
+	step "cskill-u8" bash "$ROOT/tools/cskill-u8.sh" "$ROOT/cskill" "$STATE/cskill-u8"
+	CSKSRC="$STATE/cskill-u8"
+fi
+CSKINC=" -I$P1 ${P2:+-I$P2} -I$CSKSRC/skill -I$CSKSRC -I$CSKSRC/expr \
+ -I$CSKSRC/header -I$CSKSRC/header/include -I$CSKSRC/skills \
+ -I$CSKSRC/simulator -I$CSKSRC/gen/src"
+step "cskill-lib" make -C "$CSKSRC/skill" -f ../Makefilelib \
 	CC="$CSKCC" CPP="$CSKCC" LD="$WP_LD" AR="$WP_AR" \
-	DEFINES="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE $CFLAGS -D_SKILL_SERVER" \
-	INCLUDES="$CSKINC" LDFLAGS="-O0" CFLAGS="$CFLAGS" lib -j"$JOBS"
+	DEFINES="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE $CFLAGS -D_SKILL_SERVER -DUSE_LOGCLIENT" \
+	INCLUDES="$CSKINC" LDFLAGS="-O0" CFLAGS="$CFLAGS" lib -k -j"$JOBS"
+
+# The gs link below reads the skill objects from their in-tree paths; when
+# zig compiled the escaped copy, copy the objects back into the tree.
+if [ "$MODE" = "zig" ]; then
+	cp -f "$CSKSRC/skill/"*.o "$ROOT/cskill/skill/" 2>/dev/null || true
+	cp -f "$CSKSRC/skills/"*.o "$ROOT/cskill/skills/" 2>/dev/null || true
+	cp -f "$CSKSRC/skill/libskill.a" "$ROOT/cskill/skill/" 2>/dev/null || true
+fi
 
 
 # ---------------------------------------------------------- cnet: daemons --
 # netdefs: <extra-defines> <extra-libs>
-build_net_daemon "logservice"  cnet/logservice logservice        ""          ""
-build_net_daemon "glinkd"      cnet/glinkd glinkd                "$D_HASH $D_LOGC" ""
-build_net_daemon "gauthd"      cnet/gauthd gauthd                ""          ""
-build_net_daemon "uniquenamed" cnet/uniquenamed uniquenamed      "$D_WDB $D_LOGC" ""
-build_net_daemon "gfaction"    cnet/gfaction gfactiond           "$D_HASH $D_LOGC" "$PCRELIB"
-build_net_daemon "gdeliveryd"  cnet/gdeliveryd gdeliveryd        "$D_HASH $D_LOGC" "$PCRELIB $CRYPTOLIB"
-build_net_daemon "gamedbd"     cnet/gamedbd gamedbd.wdb          "-DUSE_DB $D_WDB $D_LOGC" "$CRYPTOLIB"
+build_net_daemon "logservice"  cnet/logservice logservice        ""
+build_net_daemon "glinkd"      cnet/glinkd glinkd                "$D_LOGC"
+build_net_daemon "gauthd"      cnet/gauthd gauthd                ""
+build_net_daemon "uniquenamed" cnet/uniquenamed uniquenamed      "$D_WDB $D_LOGC"
+build_net_daemon "gfaction"    cnet/gfaction gfactiond           "$D_LOGC"
+build_net_daemon "gdeliveryd"  cnet/gdeliveryd gdeliveryd        "$D_LOGC"
+build_net_daemon "gamedbd"     cnet/gamedbd gamedbd.wdb          "-DUSE_DB $D_WDB $D_LOGC"
 
 # ------------------------------------------------------------- cgame: gs --
 # cgame common/collision/libs/gs build through their own Makefiles with the
 # Rules.make variable set overridden from the command line.
+# NOTE: CC/CPP re-apply D_GAME+CFLAGS because Rules.make bakes all of its
+# defines into CC/CPP, which these overrides replace (bare CC would compile
+# with no -DWIN32 and no winposix preinclude). AR needs its 'crs' operation
+# for the same reason.
 step "cgame-common" make -C "$ROOT/cgame/common" \
-	CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
-	INC="$GAMEINC" -j"$JOBS"
+	CC="$WP_CC $D_GAME $CFLAGS" CPP="$WP_CXX $D_GAME $CFLAGS" LD="$WP_LD" AR="$WP_AR crs" \
+	INC="$GAMEINC" -k -j"$JOBS"
 step "cgame-collision" make -C "$ROOT/cgame/collision" \
-	CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
-	INC="$GAMEINC" -j"$JOBS"
+	CC="$WP_CC $D_GAME $CFLAGS" CPP="$WP_CXX $D_GAME $CFLAGS" LD="$WP_LD" AR="$WP_AR crs" \
+	INC="$GAMEINC" -k -j"$JOBS"
+# cgame/io/pollio.o vanishes silently under zig (sub-make recursion);
+# build it explicitly first: either it works (step passes) or the real
+# error shows in its own log section.
+step "cgame-io" $WP_CXX $D_GAME $CFLAGS $GAMEINC -c "$ROOT/cgame/io/pollio.cpp" -o "$ROOT/cgame/io/pollio.o"
 step "cgame-libs" make -C "$ROOT/cgame" lib \
-	CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
-	INC="$GAMEINC" -j"$JOBS"
+	CC="$WP_CC $D_GAME $CFLAGS" CPP="$WP_CXX $D_GAME $CFLAGS" LD="$WP_LD" AR="$WP_AR crs" \
+	INC="$GAMEINC" -k -j"$JOBS"
 step "gs" make -C "$ROOT/cgame/gs" gs \
-	CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
+	CC="$WP_CC $D_GAME $CFLAGS" CPP="$WP_CXX $D_GAME $CFLAGS" LD="$WP_LD" AR="$WP_AR crs" \
 	INC="$GAMEINC" CMLIB="$ROOT/cgame/libcommon.a $ROOT/cgame/libonline.a \
 	$ROOT/cgame/libgs/gs/*.o $ROOT/cgame/libgs/io/*.o $ROOT/cgame/libgs/db/*.o \
 	$ROOT/cskill/skill/*.o $ROOT/cskill/skills/*.o $ROOT/cgame/libgs/log/*.o \
-	$ROOT/cgame/collision/libTrace.a" ALLLIB="-lws2_32 -lwinpthread -lbcrypt $PCRELIB $CRYPTOLIB" \
-	-j"$JOBS"
+	$ROOT/cgame/collision/libTrace.a" ALLLIB="$WS2LIB $PTHREADLIB -lbcrypt $PCRELIB $CRYPTOLIB" \
+	-k -j"$JOBS"
 
 # ------------------------------------------------------------- staging ------
 echo "=== staging dist-win/ ==="

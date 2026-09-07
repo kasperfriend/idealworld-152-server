@@ -21,6 +21,8 @@ DEFINES += -O3 -DUSE_EPOLL -DUSE_LOGCLIENT
 DEFINES += -D__USER__=\"$(USER)\"
 LDFLAGS += -O3
 
+PCRELIB ?= -lpcre
+
 OUTEROBJS = $(CO_DIR)/matcher.o
 CLEAN += $(CO_DIR)/matcher.o
 
@@ -31,7 +33,7 @@ OBJS = gfactionserver.o gproviderserver.o gfactiondbclient.o uniquenameclient.o 
 all : gfactiond
 
 gfactiond : $(OBJS) $(SHAREOBJ) $(OUTEROBJS) $(LOGSTUB) $(LOGOBJ)
-	$(LD) $(LDFLAGS) -o $@ $(SHAREOBJ) $(OBJS) $(OUTEROBJS) $(SHARE_SOBJ) $(LOGSTUB) $(LOGOBJ) -lpcre
+	$(LD) $(LDFLAGS) -o $@ $(SHAREOBJ) $(OBJS) $(OUTEROBJS) $(SHARE_SOBJ) $(LOGSTUB) $(LOGOBJ) $(PCRELIB)
 
 include ../mk/gcc.rules.mk
 

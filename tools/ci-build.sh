@@ -28,7 +28,7 @@ JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
 DIST_DIR="${DIST_DIR:-$ROOT/dist}"
 STRICT="${STRICT:-1}"
 
-STATE="$ROOT/.ci-build"
+STATE="$ROOT/ci-build"
 rm -rf "$STATE" "$DIST_DIR"
 mkdir -p "$STATE" "$DIST_DIR/bin" "$DIST_DIR/lib"
 

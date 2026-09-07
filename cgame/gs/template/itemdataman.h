@@ -4,89 +4,17 @@
 #include <vector.h>
 #include <hashmap.h>
 
-#ifdef LINUX
+/* NOTE: the pre-2007 `#else // Windows` branch once lived here, redefining
+ * the abase Rand helpers, fastalloc, item_data, addon_data and
+ * prerequisition inline because
+ * those headers did not exist on Windows then.  They all compile on
+ * Windows today, and the duplicate definitions break any TU that also
+ * reaches the real headers, so just use the real headers everywhere. */
 #include <arandomgen.h>
 #include <amemory.h>
 #include "exptypes.h"
 #include "../itemdata.h"
 #include "../item/item_addon.h"
-#else	// Windows
-#include "exptypes.h"
-#include <Windows.h>
-
-namespace abase
-{
-	inline int Rand(int lower, int upper)	
-	{ 
-		if(upper==lower)
-			return lower;
-		else	
-			return rand()%(upper-lower)+lower; 
-	}
-	
-	inline float Rand(float lower, float upper) 
-	{ return lower+(upper-lower)*rand()/(float)RAND_MAX; }
-	
-	inline int RandNormal(int lower, int upper) { return Rand(lower, upper); }
-	inline float RandUniform() { return Rand(0.f, 1.f); }
-	
-	inline int RandSelect(const void * option, int stride, int num) 
-	{ 
-		const char * tmp = (const char *)option;
-		float op = RandUniform();
-		for(int i =0;i < num; i ++)
-		{
-			float prob = *(float*)tmp;
-			if(op < prob ) 
-				return i;
-			op -= prob;
-			tmp += stride;
-		}
-		assert(false);
-		return 0;
-	}
-	inline void * fastalloc(size_t size) { return malloc(size); }
-	inline void   fastfree(void * buf, size_t size) {free(buf); }
-};
-
-struct item_data
-{
-	unsigned int type;   		//ÎïÆ·µÄÄ£°åID
-	size_t count;  				//ÎïÆ·µÄÊýÁ¿
-	size_t pile_limit;			//ÎïÆ·µÄ¶ÑµþÉÏÏÞ
-	int equip_mask;  			//ÎïÆ·µÄ¿É×°±¸±êÖ¾£¬0x8000±íÊ¾ÊÇÏâÇ¶Îï
-	int proc_type;				//ÎïÆ·µÄ´¦Àí·½Ê½
-	int classid;  				//ÎïÆ·¶ÔÓ¦µÄÀà±ðID
-	struct
-	{ 
-		int guid1;
-		int guid2;
-	} guid;   				//ÎïÆ·µÄGUID
-	int price;   				//ÎïÆ·µÄ¼Û¸ñ
-	int expire_date;			//µ½ÆÚÊ±¼ä
-	size_t content_length;
-	char * item_content;
-};
-
-struct addon_data
-{
-	int id;
-	int arg[3];
-};
-
-struct prerequisition
-{       
-	short level;
-	short race;
-	short strength;
-	short vitality;
-	short agility;
-	short energy;
-	int durability;
-	int max_durability;
-};      
-
-#endif
 
 int hsv2rgb( float h, float s, float v);
 class elementdataman;
@@ -313,7 +241,7 @@ namespace element_data
 		IMT_DROP,
 		IMT_SHOP,
 		IMT_PRODUCE,
-		IMT_SIGN,	//×°±¸¸ÄÇ©Ãû
+		IMT_SIGN,	//×°ï¿½ï¿½ï¿½ï¿½Ç©ï¿½ï¿½
 	};
 #pragma pack(1)
 	struct item_tag_t
@@ -329,7 +257,7 @@ namespace element_data
 //  move into class itemdataman?
 void set_to_classid(DATA_TYPE type, item_data * data, int major_type);
 void get_item_guid(int id,int & g1, int & g2);
-int addon_generate_arg(DATA_TYPE type, addon_data & data, int arg_num/*³õÊ¼µÄ²ÎÊý¸öÊý*/); //·µ»Ø×îÖÕµÄ²ÎÊý¸öÊý£¨²»»á³¬¹ý³õÊ¼¸öÊý£©
+int addon_generate_arg(DATA_TYPE type, addon_data & data, int arg_num/*ï¿½ï¿½Ê¼ï¿½Ä²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½*/); //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÕµÄ²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½á³¬ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 int addon_update_ess_data(const addon_data & data, void * essence,size_t ess_size, prerequisition * require);
 void update_require_data(prerequisition *require);
 
@@ -413,10 +341,10 @@ protected:
 	
 	
 #define ELEMENTDATAMAN_MAX_NUM_ADDON_PARAM 3
-	struct _addon		//ÊôÐÔÌõÄ¿
+	struct _addon		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿
 	{
 		int addon_type;
-		int addon_arg[ELEMENTDATAMAN_MAX_NUM_ADDON_PARAM]; 		// 0 ~ 3 ÊýÄ¿ÊÇ ((type & 0x6000)>>13)
+		int addon_arg[ELEMENTDATAMAN_MAX_NUM_ADDON_PARAM]; 		// 0 ~ 3 ï¿½ï¿½Ä¿ï¿½ï¿½ ((type & 0x6000)>>13)
 	};
 	
 #define ELEMENTDATAMAN_MAX_NUM_HOLES 5
@@ -426,12 +354,12 @@ protected:
 	struct _item_content
 	{
 		prerequisition preq;
-		short sizeofessence;					//×°±¸±¾Ìå´óÐ¡£¨×Ö½Ú£©;
-		//	essence							//char ±¾Ìå[];							//Ã¿ÖÖ²»Í¬×°±¸µÄ±¾Ìå½á¹¹²»Í¬
-		int num_hole;						//¿×¶´µÄÊýÄ¿£¨¸öÊý£©;
-		//	int hole_type[MAX_NUM_HOLES];	//¿×¶´ÀïÇ¶ÈëÎïµÄÀàÐÍ[¿×¶´µÄÊýÄ¿];       //Èç¹û¿×¶´ÊýÄ¿Îª0,ÔòÕâÏî²»´æÔÚ
-		int num_addon;						//ÊôÐÔ±íÌõÄ¿µÄÊýÄ¿£¨¸öÊý£©;
-		//	_addon ad[MAX_NUM_ADDONS];		//[ÊôÐÔ±íÌõÄ¿µÄÊýÄ¿];
+		short sizeofessence;					//×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½Ö½Ú£ï¿½;
+		//	essence							//char ï¿½ï¿½ï¿½ï¿½[];							//Ã¿ï¿½Ö²ï¿½Í¬×°ï¿½ï¿½ï¿½Ä±ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½Í¬
+		int num_hole;						//ï¿½×¶ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;
+		//	int hole_type[MAX_NUM_HOLES];	//ï¿½×¶ï¿½ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½×¶ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿];       //ï¿½ï¿½ï¿½ï¿½×¶ï¿½ï¿½ï¿½Ä¿Îª0,ï¿½ï¿½ï¿½ï¿½ï¿½î²»ï¿½ï¿½ï¿½ï¿½
+		int num_addon;						//ï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½;
+		//	_addon ad[MAX_NUM_ADDONS];		//[ï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½Ä¿];
 	};
 #pragma  pack()	
 
@@ -441,18 +369,18 @@ protected:
 		{
 			WEAPON_TYPE_MELEE = 0,
 			WEAPON_TYPE_RANGE = 1,
-			WEAPON_TYPE_MELEE_ASN = 2,	//´Ì¿ÍÊ¹ÓÃµÄ½ü³ÌÎäÆ÷£¬³ýÃô½ÝÓ°ÏìÎï¹¥Íâ£¬ÆäËûÓë½ü³ÌÏàÍ¬
+			WEAPON_TYPE_MELEE_ASN = 2,	//ï¿½Ì¿ï¿½Ê¹ï¿½ÃµÄ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½ï¿½ï¿½ï¹¥ï¿½â£¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¬
 		};
 		
-		short weapon_type;       	//ÎäÆ÷Àà±ð ¶ÔÓ¦Ä£°åÀïµÄ½ø³ÌÔ¶³Ì±êÖ¾
-		short weapon_delay;		//ÎäÆ÷µÄ¹¥»÷ÑÓ³ÙÊ±¼ä£¬ÒÔ50msÎªµ¥Î»
-		int weapon_class;       	//ÎäÆ÷×ÓÀà ¶ÔÓ¦Ä£°åÀïµÄ´óÀà ±ÈÈçµ¶½£ ³¤±øµÈ
-		int weapon_level;		//ÎäÆ÷¼¶±ð Ä³Ð©²Ù×÷ÐèÒªÎäÆ÷¼¶±ð
-		int require_projectile; 	//ÐèÒªµ¯Ò©µÄÀàÐÍ
-		int damage_low;         	//ÎïÀí¹¥»÷×îÐ¡¼ÓÖµ
-		int damage_high;        	//ÎïÀí¹¥»÷×î´ó¼ÓÖµ
-		int magic_damage_low;   	//Ä§·¨¹¥»÷
-		int magic_damage_high;  	//Ä§·¨¹¥»÷
+		short weapon_type;       	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ó¦Ä£ï¿½ï¿½ï¿½ï¿½Ä½ï¿½ï¿½ï¿½Ô¶ï¿½Ì±ï¿½Ö¾
+		short weapon_delay;		//ï¿½ï¿½ï¿½ï¿½ï¿½Ä¹ï¿½ï¿½ï¿½ï¿½Ó³ï¿½Ê±ï¿½ä£¬ï¿½ï¿½50msÎªï¿½ï¿½Î»
+		int weapon_class;       	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ó¦Ä£ï¿½ï¿½ï¿½ï¿½Ä´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½çµ¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		int weapon_level;		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ä³Ð©ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		int require_projectile; 	//ï¿½ï¿½Òªï¿½ï¿½Ò©ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		int damage_low;         	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½ï¿½Öµ
+		int damage_high;        	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
+		int magic_damage_low;   	//Ä§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		int magic_damage_high;  	//Ä§ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		int attack_speed;
 		float attack_range;
 		float attack_short_range;
@@ -460,9 +388,9 @@ protected:
 	
 	struct _projectile_essence
 	{
-		int projectile_type;		//µ¯Ò©ÀàÐÍ
-		int enhance_damage;		//Ôö¼ÓÎäÆ÷µÄ¹¥»÷Á¦
-		int scale_enhance_damage; 	//°´ÕÕ±ÈÀýÔö¼Ó¹¥»÷Á¦
+		int projectile_type;		//ï¿½ï¿½Ò©ï¿½ï¿½ï¿½ï¿½
+		int enhance_damage;		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¹ï¿½ï¿½ï¿½ï¿½ï¿½
+		int scale_enhance_damage; 	//ï¿½ï¿½ï¿½Õ±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¹ï¿½ï¿½ï¿½ï¿½ï¿½
 		int weapon_level_low;
 		int weapon_level_high;
 	};
@@ -538,8 +466,8 @@ protected:
 		char improve_level;
 		int require_class;
 		size_t time_per_element;
-		float speed_increase;		//ÆÕÍ¨·ÉÐÐËÙ¶È
-		float speed_increase2;		//¸ßËÙ·ÉÐÐËÙ¶È
+		float speed_increase;		//ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½
+		float speed_increase2;		//ï¿½ï¿½ï¿½Ù·ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½
 	};
 
 	struct _wingmanwing_essence
@@ -599,21 +527,21 @@ protected:
 
 	struct _petegg_essence
 	{
-		int req_level;          //ÐèÇóÍæ¼Ò¼¶±ð
-		int req_class;          //ÐèÇóÍæ¼ÒÖ°Òµ
-		int honor_point;        //ºÃ¸Ð¶È
-		int pet_tid;            //³èÎïµÄÄ£°åID
-		int pet_vis_tid;        //³èÎïµÄ¿É¼ûID£¨Èç¹ûÎª0£¬Ôò±íÊ¾ÎÞÌØÊâ¿É¼ûID£©
-		int pet_egg_tid;        //³èÎïµ°µÄID
-		int pet_class;          //³èÎïÀàÐÍ Õ½³è£¬Æï³è£¬¹ÛÉÍ³è
-		short level;            //³èÎï¼¶±ð
-		unsigned short color;   //³èÎïÑÕÉ«£¬×î¸ßÎ»Îª1±íÊ¾ÓÐÐ§£¬Ä¿Ç°½ö¶ÔÆï³èÓÐÐ§
-		int exp;                //³èÎïµ±Ç°¾­Ñé
-		int skill_point;        //Ê£Óà¼¼ÄÜµã
-		unsigned short name_len;//Ãû×Ö³¤¶È 
-		unsigned short skill_count;//¼¼ÄÜÊýÁ¿		
-		char name[16];          //Ãû×ÖÄÚÈÝ
-		//ÕâÀï¸úËæ¼¼ÄÜ±í
+		int req_level;          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò¼ï¿½ï¿½ï¿½
+		int req_class;          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö°Òµ
+		int honor_point;        //ï¿½Ã¸Ð¶ï¿½
+		int pet_tid;            //ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½ID
+		int pet_vis_tid;        //ï¿½ï¿½ï¿½ï¿½Ä¿É¼ï¿½IDï¿½ï¿½ï¿½ï¿½ï¿½Îª0ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É¼ï¿½IDï¿½ï¿½
+		int pet_egg_tid;        //ï¿½ï¿½ï¿½ïµ°ï¿½ï¿½ID
+		int pet_class;          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Õ½ï¿½è£¬ï¿½ï¿½è£¬ï¿½ï¿½ï¿½Í³ï¿½
+		short level;            //ï¿½ï¿½ï¿½ï¼¶ï¿½ï¿½
+		unsigned short color;   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½ï¿½ï¿½ï¿½Î»Îª1ï¿½ï¿½Ê¾ï¿½ï¿½Ð§ï¿½ï¿½Ä¿Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§
+		int exp;                //ï¿½ï¿½ï¿½ïµ±Ç°ï¿½ï¿½ï¿½ï¿½
+		int skill_point;        //Ê£ï¿½à¼¼ï¿½Üµï¿½
+		unsigned short name_len;//ï¿½ï¿½ï¿½Ö³ï¿½ï¿½ï¿½ 
+		unsigned short skill_count;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½		
+		char name[16];          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½æ¼¼ï¿½Ü±ï¿½
 		/*
 		 *	
 		 struct
@@ -632,12 +560,12 @@ protected:
 		int r_atk_lvl;
 		int r_def_lvl;
 		int nature;
-	};//½ø»¯³èµÄ×¨ÓÐÊôÐÔ£¬Ëæ»úÏµÊýºÍÐÔ¸ñ
+	};//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×¨ï¿½ï¿½ï¿½ï¿½ï¿½Ô£ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½Ô¸ï¿½
 	
 	struct _petfood_essense
 	{
-		int honor_effect;	//µãÊýÐ§¹û
-		int food_mask;		//Ê³ÎïÖÖÀà
+		int honor_effect;	//ï¿½ï¿½ï¿½ï¿½Ð§ï¿½ï¿½
+		int food_mask;		//Ê³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	};
 	
 	struct _monster_essence
@@ -662,28 +590,28 @@ protected:
 		unsigned int exp;
 		short level;
 	
-		short total_attribute;	//Éý¼¶²úÉúµÄÊôÐÔµã×ÜÊý£¬²»°üÀ¨×°±¸Ôö¼ÓµÄ¼°¸÷ÊôÐÔ³õÊ¼Öµ
-		short strength;			//ÓÉ¼ÓÊôÐÔµã¶ø²úÉúµÄÊôÐÔÖµ£¬²»°üÀ¨×°±¸Ôö¼ÓµÄ¼°¸÷ÊôÐÔ³õÊ¼Öµ
+		short total_attribute;	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½ÓµÄ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô³ï¿½Ê¼Öµ
+		short strength;			//ï¿½É¼ï¿½ï¿½ï¿½ï¿½Ôµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½ÓµÄ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô³ï¿½Ê¼Öµ
 		short agility;
 		short vitality;
 		short energy;
 
-		short total_genius;		//Ìì¸³µã£¬²»°üÀ¨×°±¸Ôö¼ÓµÄ
-		short genius[5];			//½ðÄ¾Ë®»ðÍÁ0-4
+		short total_genius;		//ï¿½ì¸³ï¿½ã£¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½
+		short genius[5];			//ï¿½ï¿½Ä¾Ë®ï¿½ï¿½ï¿½ï¿½0-4
 	
 		short refine_level;
-		int stamina; 			//ÄÍÁ¦
-		int status_value;		//0:°²È« -1:¿É½»Ò× ÕýÊý:×ª»¯×´Ì¬
+		int stamina; 			//ï¿½ï¿½ï¿½ï¿½
+		int status_value;		//0:ï¿½ï¿½È« -1:ï¿½É½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½:×ªï¿½ï¿½×´Ì¬
 	};
 	
 
 	struct _elf_item_content
 	{
-		struct _elf_essence ess;	//Ð¡¾«Áé±¾Ìå
-		int equip_cnt;				//ÒÑ×°±¸µÄ×°±¸ÊýÁ¿
-		//unsigned int equipid[equip_cnt];		//×°±¸id
-		int skill_cnt;				//ÒÑÑ§»áµÄ¼¼ÄÜÊý
-		//struct _elf_skill_data skill[skill_cnt];	//¼¼ÄÜ idºÍµÈ¼¶
+		struct _elf_essence ess;	//Ð¡ï¿½ï¿½ï¿½é±¾ï¿½ï¿½
+		int equip_cnt;				//ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		//unsigned int equipid[equip_cnt];		//×°ï¿½ï¿½id
+		int skill_cnt;				//ï¿½ï¿½Ñ§ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½
+		//struct _elf_skill_data skill[skill_cnt];	//ï¿½ï¿½ï¿½ï¿½ idï¿½ÍµÈ¼ï¿½
 	};
 
 	struct _elf_exppill_essence
@@ -759,7 +687,7 @@ protected:
 
 		item_data * generate_item_for_shop(unsigned int id,const void * tag, size_t tag_size);
 		item_data * generate_item_for_drop(unsigned int id,const void * tag, size_t tag_size);
-		item_data * generate_item_from_player(unsigned int id,const void * tag, size_t tag_size); //Éú²ú³öÀ´µÄÎïÆ·
+		item_data * generate_item_from_player(unsigned int id,const void * tag, size_t tag_size); //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ·
 
 		item_data * generate_equipment(unsigned int id, float rlist[32], int ridxlist[32], int addon[ELEMENTDATAMAN_MAX_NUM_ADDONS]);
 
@@ -771,10 +699,10 @@ protected:
 		int get_item_repair_fee(unsigned int id);
 		int get_item_proc_type(unsigned int id);
 		int get_cool_time(unsigned int id);
-		int get_item_damaged_drop(unsigned int id,unsigned int &damaged_drop);	//damaged_dropÊÇËð»ÙºóµôÂäÎïÆ·µÄid£¬·µ»ØÖµÊÇµôÂäÊýÁ¿
+		int get_item_damaged_drop(unsigned int id,unsigned int &damaged_drop);	//damaged_dropï¿½ï¿½ï¿½ï¿½Ùºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ·ï¿½ï¿½idï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½Çµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		int get_item_class_limit(unsigned int id);
 		int get_item_reputation_limit(unsigned id);
-		int get_item_level(unsigned int id);	//»ñÈ¡ÎïÆ·µÄÆ·½×
+		int get_item_level(unsigned int id);	//ï¿½ï¿½È¡ï¿½ï¿½Æ·ï¿½ï¿½Æ·ï¿½ï¿½
 		int reset_classid(item_data * data);
 		unsigned char * get_item_name(unsigned int id,int &name_len);
 #include "generate_item_temp.h"

@@ -22,7 +22,13 @@
 
 #include <signal.h>
 #include <fcntl.h>
+#include <stdarg.h>
+#include <time.h>
 #include <sys/time.h>
+#include <sys/un.h>
+#include <sys/uio.h>
+#include <sys/poll.h>
+#include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -127,12 +133,7 @@
 #define SIG_ERR ((void (*)(int))-1)
 #endif
 
-static void wsa_init()
-{
-	WSADATA wd;
-	if (WSAStartup(MAKEWORD(2, 2), &wd) != 0)
-		abort();
-}
+static void wsa_init(void);
 
 /* Map a Winsock error code to a Linux-flavoured errno value. */
 static int wp_wsa_to_errno(int wsa)
@@ -180,10 +181,6 @@ static int wp_wsa_to_errno(int wsa)
 	}
 }
 
-void wp_map_wsaerr(void)
-{
-	errno = wp_wsa_to_errno(WSAGetLastError());
-}
 
 /* ---- pseudo fd table ----------------------------------------------------- */
 #define WSOCK_FD_BASE 0x10000000
@@ -295,6 +292,19 @@ namespace
 		                          const struct timeval *);
 		int     (WINAPI *gethostname_)(char *, int);
 		int     (WINAPI *ioctlsocket_)(SOCKET, long, u_long *);
+		int     (WINAPI *WSAGetLastError_)(void);
+		int     (WINAPI *WSAStartup_)(WORD, LPWSADATA);
+		int     (WINAPI *WSADuplicateSocketW_)(SOCKET, DWORD, LPWSAPROTOCOL_INFOW);
+		SOCKET  (WINAPI *WSASocketW_)(int, int, int, LPWSAPROTOCOL_INFOW, DWORD, DWORD);
+		u_short (WINAPI *htons_)(u_short);
+		u_short (WINAPI *ntohs_)(u_short);
+		u_long  (WINAPI *htonl_)(u_long);
+		u_long  (WINAPI *ntohl_)(u_long);
+		unsigned long (WINAPI *inet_addr_)(const char *);
+		char *(WINAPI *inet_ntoa_)(struct in_addr);
+		int     (WINAPI *__WSAFDIsSet_)(SOCKET, fd_set *);
+		int     (WINAPI *inet_pton_)(int, const char *, void *);
+		struct hostent *(WINAPI *gethostbyname_)(const char *);
 		Ws()
 		{
 			HMODULE m = GetModuleHandleA("ws2_32.dll");
@@ -316,9 +326,34 @@ namespace
 			select_       = (int (WINAPI *)(int,fd_set*,fd_set*,fd_set*,const struct timeval*))GetProcAddress(m, "select");
 			gethostname_  = (int (WINAPI *)(char*,int))GetProcAddress(m, "gethostname");
 			ioctlsocket_  = (int (WINAPI *)(SOCKET,long,u_long*))GetProcAddress(m, "ioctlsocket");
+			WSAGetLastError_ = (int (WINAPI *)(void))GetProcAddress(m, "WSAGetLastError");
+			WSAStartup_ = (int (WINAPI *)(WORD,LPWSADATA))GetProcAddress(m, "WSAStartup");
+			WSADuplicateSocketW_ = (int (WINAPI *)(SOCKET,DWORD,LPWSAPROTOCOL_INFOW))GetProcAddress(m, "WSADuplicateSocketW");
+			WSASocketW_ = (SOCKET (WINAPI *)(int,int,int,LPWSAPROTOCOL_INFOW,DWORD,DWORD))GetProcAddress(m, "WSASocketW");
+			htons_ = (u_short (WINAPI *)(u_short))GetProcAddress(m, "htons");
+			ntohs_ = (u_short (WINAPI *)(u_short))GetProcAddress(m, "ntohs");
+			htonl_ = (u_long (WINAPI *)(u_long))GetProcAddress(m, "htonl");
+			ntohl_ = (u_long (WINAPI *)(u_long))GetProcAddress(m, "ntohl");
+			inet_addr_ = (unsigned long (WINAPI *)(const char *))GetProcAddress(m, "inet_addr");
+			inet_ntoa_ = (char *(WINAPI *)(struct in_addr))GetProcAddress(m, "inet_ntoa");
+			__WSAFDIsSet_ = (int (WINAPI *)(SOCKET,fd_set *))GetProcAddress(m, "__WSAFDIsSet");
+			inet_pton_ = (int (WINAPI *)(int,const char *,void *))GetProcAddress(m, "inet_pton");
+			gethostbyname_ = (struct hostent *(WINAPI *)(const char *))GetProcAddress(m, "gethostbyname");
 		}
 	} g_ws;
 	int wp_fd(SOCKET s) { return (int)(intptr_t)s; }
+}
+
+static void wsa_init()
+{
+	WSADATA wd;
+	if (g_ws.WSAStartup_(MAKEWORD(2, 2), &wd) != 0)
+		abort();
+}
+
+void wp_map_wsaerr(void)
+{
+	errno = wp_wsa_to_errno(g_ws.WSAGetLastError_());
 }
 
 /* ---- socket API (shadows the ws2_32 imports so pseudo fds work) ---------- */
@@ -485,6 +520,56 @@ int closesocket(SOCKET s)
 	return g_ws.closesocket_(s);
 }
 
+int ioctlsocket(SOCKET s, long cmd, u_long *arg)
+{
+	SOCKET real = g_fds.get(wp_fd(s));
+	if (real == INVALID_SOCKET) { errno = EBADF; return SOCKET_ERROR; }
+	if (g_ws.ioctlsocket_(real, cmd, arg) == SOCKET_ERROR)
+		return wp_socket_err();
+	return 0;
+}
+
+u_short htons(u_short x) { return g_ws.htons_(x); }
+u_short ntohs(u_short x) { return g_ws.ntohs_(x); }
+u_long htonl(u_long x) { return g_ws.htonl_(x); }
+u_long ntohl(u_long x) { return g_ws.ntohl_(x); }
+unsigned long inet_addr(const char *s) { return g_ws.inet_addr_(s); }
+char *inet_ntoa(struct in_addr a) { return g_ws.inet_ntoa_(a); }
+int __WSAFDIsSet(SOCKET s, fd_set *f) { return g_ws.__WSAFDIsSet_(s, f); }
+int inet_pton(int af, const char *s, void *d) { return g_ws.inet_pton_(af, s, d); }
+struct hostent *gethostbyname(const char *s) { return g_ws.gethostbyname_(s); }
+
+/* dllimport callers (winsock2.h declares __declspec(dllimport)) emit __imp_X
+ * references.  Satisfy them here so no -lws2_32 is needed (its import thunks
+ * would duplicate our bare interposers under both GNU ld and lld-link). */
+void * __imp___WSAFDIsSet = (void *)__WSAFDIsSet;
+void * __imp_accept = (void *)accept;
+void * __imp_bind = (void *)bind;
+void * __imp_closesocket = (void *)closesocket;
+void * __imp_connect = (void *)connect;
+void * __imp_gethostbyname = (void *)gethostbyname;
+void * __imp_gethostname = (void *)gethostname;
+void * __imp_getpeername = (void *)getpeername;
+void * __imp_getsockname = (void *)getsockname;
+void * __imp_getsockopt = (void *)getsockopt;
+void * __imp_htonl = (void *)htonl;
+void * __imp_htons = (void *)htons;
+void * __imp_inet_addr = (void *)inet_addr;
+void * __imp_inet_ntoa = (void *)inet_ntoa;
+void * __imp_inet_pton = (void *)inet_pton;
+void * __imp_ioctlsocket = (void *)ioctlsocket;
+void * __imp_listen = (void *)listen;
+void * __imp_ntohl = (void *)ntohl;
+void * __imp_ntohs = (void *)ntohs;
+void * __imp_recv = (void *)recv;
+void * __imp_recvfrom = (void *)recvfrom;
+void * __imp_select = (void *)select;
+void * __imp_send = (void *)send;
+void * __imp_sendto = (void *)sendto;
+void * __imp_setsockopt = (void *)setsockopt;
+void * __imp_shutdown = (void *)shutdown;
+void * __imp_socket = (void *)socket;
+
 /* ---- CRT descriptor layer ------------------------------------------------ */
 
 int close(int fd)
@@ -558,9 +643,9 @@ int dup(int fd)
 		}
 		WSAPROTOCOL_INFOW info;
 		memset(&info, 0, sizeof(info));
-		if (WSADuplicateSocketW(s, GetCurrentProcessId(), &info) == SOCKET_ERROR)
+		if (g_ws.WSADuplicateSocketW_(s, GetCurrentProcessId(), &info) == SOCKET_ERROR)
 			return wp_socket_err();
-		SOCKET ns = WSASocketW(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO,
+		SOCKET ns = g_ws.WSASocketW_(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO,
 		                       FROM_PROTOCOL_INFO, &info, 0, WSA_FLAG_OVERLAPPED);
 		if (ns == INVALID_SOCKET)
 			return wp_socket_err();
@@ -769,7 +854,7 @@ int select(int nfds, fd_set *r, fd_set *w, fd_set *e,
 	return rc;
 }
 
-int poll(struct pollfd *fds, unsigned long nfds, int timeout)
+int poll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
 	if (nfds == 0)
 	{
@@ -1142,22 +1227,61 @@ int sigaction(int sig, const struct sigaction *act, struct sigaction *oldact)
 struct tm * localtime_r(const time_t *t, struct tm *buf)
 {
 	if (!t || !buf) { errno = EINVAL; return NULL; }
-	/* MSVCRT's localtime() keeps its buffer in thread-local storage, which
-	 * matches localtime_r()'s per-thread guarantee well enough. */
-	struct tm *p = localtime(t);
-	if (!p) return NULL;
-	*buf = *p;
+	if (localtime_s(buf, t) != 0)
+		return NULL;
 	return buf;
 }
+
 
 struct tm * gmtime_r(const time_t *t, struct tm *buf)
 {
 	if (!t || !buf) { errno = EINVAL; return NULL; }
-	struct tm *p = gmtime(t);
-	if (!p) return NULL;
-	*buf = *p;
+	if (gmtime_s(buf, t) != 0)
+		return NULL;
 	return buf;
 }
+
+char *ctime_r(const time_t *t, char *buf)
+{
+	if (!t || !buf) { errno = EINVAL; return NULL; }
+	if (ctime_s(buf, 26, t) != 0)
+		return NULL;
+	return buf;
+}
+
+/* NOTE: current mingw-w64 CRTs export clock_gettime(), so the native build
+ * defines WP_HAVE_CLOCK_GETTIME and skips this.  The zig/clang build has no
+ * usable CRT copy, so it keeps ours.  The declaration in winposix.h stays
+ * unconditional (a duplicate identical C declaration is legal). */
+#ifndef WP_HAVE_CLOCK_GETTIME
+int clock_gettime(int clk_id, struct timespec *tp)
+{
+	if (!tp) { errno = EFAULT; return -1; }
+	if (clk_id == CLOCK_MONOTONIC)
+	{
+		static LARGE_INTEGER freq = { 0, 0 };
+		LARGE_INTEGER now;
+		long long total_ns;
+		if (freq.QuadPart == 0)
+			QueryPerformanceFrequency(&freq);
+		QueryPerformanceCounter(&now);
+		total_ns = now.QuadPart * 1000000000LL / freq.QuadPart;
+		tp->tv_sec = (long)(total_ns / 1000000000LL);
+		tp->tv_nsec = (long)(total_ns % 1000000000LL);
+		return 0;
+	}
+	{
+		FILETIME ft;
+		unsigned long long t;
+		GetSystemTimeAsFileTime(&ft);
+		t = (((unsigned long long)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+		t -= 116444736000000000ULL;  /* 1601 -> 1970 */
+		tp->tv_sec = (long)(t / 10000000ULL);
+		tp->tv_nsec = (long)((t % 10000000ULL) * 100);
+		return 0;
+	}
+}
+#endif /* WP_HAVE_CLOCK_GETTIME */
 
 int gettimeofday(struct timeval *tv, void *tz)
 {
@@ -1230,7 +1354,7 @@ namespace
 		{
 			InitializeCriticalSection(&cs);
 		}
-	} g_timer;
+	} wp_g_timer;
 	volatile bool g_timer_stop = false;
 
 	unsigned __stdcall wp_timer_thread_proc(void *arg)
@@ -1239,9 +1363,9 @@ namespace
 		for (;;)
 		{
 			long long us;
-			EnterCriticalSection(&g_timer.cs);
-			us = g_timer.period_us;
-			LeaveCriticalSection(&g_timer.cs);
+			EnterCriticalSection(&wp_g_timer.cs);
+			us = wp_g_timer.period_us;
+			LeaveCriticalSection(&wp_g_timer.cs);
 			if (us <= 0)
 			{
 				Sleep(20);
@@ -1261,10 +1385,10 @@ int setitimer(int which, const struct itimerval *value,
 	{
 		memset(ovalue, 0, sizeof(*ovalue));
 	}
-	EnterCriticalSection(&g_timer.cs);
+	EnterCriticalSection(&wp_g_timer.cs);
 	if (!value)
 	{
-		g_timer.period_us = 0;
+		wp_g_timer.period_us = 0;
 	}
 	else
 	{
@@ -1272,14 +1396,14 @@ int setitimer(int which, const struct itimerval *value,
 			((long long)value->it_value.tv_sec * 1000000LL) + value->it_value.tv_usec;
 		long long per =
 			((long long)value->it_interval.tv_sec * 1000000LL) + value->it_interval.tv_usec;
-		g_timer.period_us = per > 0 ? per : (iv > 0 ? iv : 0);
-		if (!g_timer.thread_started)
+		wp_g_timer.period_us = per > 0 ? per : (iv > 0 ? iv : 0);
+		if (!wp_g_timer.thread_started)
 		{
 			_beginthreadex(NULL, 0, wp_timer_thread_proc, NULL, 0, NULL);
-			g_timer.thread_started = true;
+			wp_g_timer.thread_started = true;
 		}
 	}
-	LeaveCriticalSection(&g_timer.cs);
+	LeaveCriticalSection(&wp_g_timer.cs);
 	(void)g_timer_stop;
 	return 0;
 }
@@ -1293,6 +1417,102 @@ int getitimer(int which, struct itimerval *value)
 }
 
 /* ---- misc ---------------------------------------------------------------- */
+
+int fsync(int fd)
+{
+	HANDLE h;
+	if (g_is_pseudo(fd))
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	h = (HANDLE)_get_osfhandle(fd);
+	if (h == (HANDLE)-1)
+		return -1;
+	if (!FlushFileBuffers(h))
+	{
+		errno = EIO;
+		return -1;
+	}
+	return 0;
+}
+
+int alphasort(const struct dirent **a, const struct dirent **b)
+{
+	return strcmp((*a)->d_name, (*b)->d_name);
+}
+
+int scandir(const char *dir, struct dirent ***namelist,
+            int (*filter)(const struct dirent *),
+            int (*compar)(const struct dirent **, const struct dirent **))
+{
+	DIR *d;
+	struct dirent *ent;
+	struct dirent **list = NULL;
+	size_t count = 0, cap = 0;
+	if (!dir || !namelist) { errno = EFAULT; return -1; }
+	*namelist = NULL;
+	d = opendir(dir);
+	if (!d) return -1;
+	while ((ent = readdir(d)) != NULL)
+	{
+		struct dirent *copy;
+		if (filter && !filter(ent))
+			continue;
+		if (count == cap)
+		{
+			size_t ncap = cap ? cap * 2 : 32;
+			struct dirent **nlist = (struct dirent **)realloc(list, ncap * sizeof(*nlist));
+			if (!nlist) { closedir(d); errno = ENOMEM; return -1; }
+			list = nlist;
+			cap = ncap;
+		}
+		copy = (struct dirent *)malloc(sizeof(*copy));
+		if (!copy) { closedir(d); errno = ENOMEM; return -1; }
+		memcpy(copy, ent, sizeof(*copy));
+		list[count++] = copy;
+	}
+	closedir(d);
+	if (compar && count > 1)
+		qsort(list, count, sizeof(*list),
+		      (int (*)(const void *, const void *))compar);
+	*namelist = list;
+	return (int)count;
+}
+
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
+{
+	ssize_t total = 0;
+	int i;
+	if (iovcnt < 0) { errno = EINVAL; return -1; }
+	for (i = 0; i < iovcnt; i++)
+	{
+		ssize_t r = read(fd, iov[i].iov_base, (unsigned int)iov[i].iov_len);
+		if (r < 0)
+			return total ? total : -1;
+		total += r;
+		if ((size_t)r < iov[i].iov_len)
+			break;
+	}
+	return total;
+}
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
+{
+	ssize_t total = 0;
+	int i;
+	if (iovcnt < 0) { errno = EINVAL; return -1; }
+	for (i = 0; i < iovcnt; i++)
+	{
+		ssize_t r = write(fd, iov[i].iov_base, (unsigned int)iov[i].iov_len);
+		if (r < 0)
+			return total ? total : -1;
+		total += r;
+		if ((size_t)r < iov[i].iov_len)
+			break;
+	}
+	return total;
+}
 
 void *mmap(void *addr, size_t len, int prot, int flags, int fd, long long off)
 {
@@ -1308,3 +1528,59 @@ int munmap(void *addr, size_t len)
 }
 
 } /* extern "C" */
+
+/* C++ linkage on purpose (see winposix.h): this overloads the 1-argument CRT
+ * mkdir().  ftruncate below is extern "C" instead: storage TUs include
+ * <unistd.h>, whose C declaration only merges with an identical C one. */
+int mkdir(const char *path, int mode)
+{
+	(void)mode; /* Windows has no POSIX permission bits */
+	if (!path) { errno = EFAULT; return -1; }
+	return _mkdir(path);
+}
+
+/* NOTE: declared (int, off_t) in winposix.h so it merges with mingw's
+ * <unistd.h>; defined here with long long so 64-bit WDB callers pass full
+ * lengths (winposix.o itself builds with _FILE_OFFSET_BITS=64 so the two
+ * spellings name the same type).  32-bit callers zero-extend, which is the
+ * correct value for them.  First on the link line, so this wins over the
+ * CRT's 32-bit ftruncate like the other interposers. */
+extern "C" int ftruncate(int fd, long long len)
+{
+	HANDLE h;
+	LARGE_INTEGER pos, cur;
+	if (g_is_pseudo(fd))
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	if (len < 0) { errno = EINVAL; return -1; }
+	h = (HANDLE)_get_osfhandle(fd);
+	if (h == (HANDLE)-1)
+		return -1;
+	cur.QuadPart = 0;
+	if (!SetFilePointerEx(h, cur, &pos, FILE_CURRENT))
+		return -1;
+	cur.QuadPart = len;
+	if (!SetFilePointerEx(h, cur, NULL, FILE_BEGIN))
+		return -1;
+	if (!SetEndOfFile(h))
+		return -1;
+	SetFilePointerEx(h, pos, NULL, FILE_BEGIN);
+	return 0;
+}
+
+/* setlinebuf(): gamedbd/gs ask for line-buffered stdout.  The UCRT honors
+ * _IOLBF the same as _IOFBF (no true line buffering), which is the best
+ * available and all these call sites need. */
+extern "C" void setlinebuf(FILE *f)
+{
+	if (f) setvbuf(f, NULL, _IOLBF, 0);
+}
+
+/* C++-linkage overload (NOT extern "C"): gs passes long* on LLP64. */
+struct tm *localtime(long *t)
+{
+	time_t tt = (time_t)*t;
+	return ::localtime(&tt);
+}

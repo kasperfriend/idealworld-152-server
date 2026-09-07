@@ -4,7 +4,11 @@
 #include <stddef.h>
 #include "vector.h"
 
-#ifdef	WIN32
+/* WIN32 alone no longer implies the game client: this tree also builds the
+ * server daemons for Windows, and they need the server-side task logic.
+ * Only the real client build (which defines _ELEMENTCLIENT) takes the
+ * _TASK_CLIENT path. */
+#if defined(WIN32) && defined(_ELEMENTCLIENT)
 	#define _TASK_CLIENT
 #endif
 

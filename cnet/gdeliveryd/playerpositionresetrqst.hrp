@@ -39,7 +39,7 @@ public:
 		else return 2; 
 	} // 1 副本达上限 2 人数达上限
 
-	void PlayerPositionResetRqst::CreateResetPos()
+	void CreateResetPos()
 	{
 		PlayerPositionResetRqstArg *arg = (PlayerPositionResetRqstArg *)argument;
 
@@ -50,7 +50,7 @@ public:
 		arg->pos_z = 972;
 	}
 
-	void PlayerPositionResetRqst::AgreeReset(int userid,int roleid,int localsid,int worldtag,float x,float y,float z)
+	void AgreeReset(int userid,int roleid,int localsid,int worldtag,float x,float y,float z)
 	{
 		DBPlayerPositionReset* rpc = (DBPlayerPositionReset*) Rpc::Call(RPC_DBPLAYERPOSITIONRESET,DBPlayerPositionResetArg(roleid,worldtag,x,y,z));
 
@@ -63,7 +63,7 @@ public:
 		GameDBClient::GetInstance()->SendProtocol(rpc);
 	}	
 				
-	void PlayerPositionResetRqst::RefuseReset()        
+	void RefuseReset()        
 	{
 		GDeliveryServer* dsm=GDeliveryServer::GetInstance();
 		PlayerPositionResetRqstArg *arg = (PlayerPositionResetRqstArg *)argument;

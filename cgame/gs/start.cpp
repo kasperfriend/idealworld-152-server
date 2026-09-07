@@ -134,8 +134,7 @@ extern unsigned long long s2c_cmd_number_counter2[1024];
 }
 int main(int argn , char ** argv)
 {
-		printf("Compiled " __DATE__ " " __TIME__ "
-");
+		printf("Compiled " __DATE__ " " __TIME__ "\n");
 	
 	if(system("/bin/touch foo"))
 	{
@@ -146,7 +145,12 @@ int main(int argn , char ** argv)
 	time_t now = time(NULL);
 	struct tm tm1; 
 	localtime_r(&now, &tm1);
+#ifdef WIN32
+	long wp_tz = 0; _get_timezone(&wp_tz);
+	if((-wp_tz) == 28800) //北京时区才修改TZ 环境变量 
+#else
 	if(tm1.tm_gmtoff == 28800) //北京时区才修改TZ 环境变量 
+#endif
 	{
 		putenv("TZ=Asia/Shanghai");
 	}
@@ -176,6 +180,13 @@ int main(int argn , char ** argv)
 		return rst;
 	}
 
+#ifdef WIN32
+	if(argn > 5)
+	{
+		__PRINTINFO("Windows cannot fork sibling servers; starting %s only."
+		              " Run one gs.exe per server instead.\n", servername);
+	}
+#else
 	if(argn >5)
 	{
 		do
@@ -217,6 +228,7 @@ int main(int argn , char ** argv)
 		}
 		while(0);
 	}
+#endif
 
 	if(g_mobile_server && strncmp(servername, mobile_prefix, strlen(mobile_prefix)) != 0
 			|| !g_mobile_server && strncmp(servername, mobile_prefix, strlen(mobile_prefix)) == 0)

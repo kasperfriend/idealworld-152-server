@@ -21,6 +21,10 @@ DEFINES += -D__USER__=\"$(USER)\"
 #LDFLAGS += -O3 -static -ipo
 LDFLAGS += -O0
 
+PCRELIB ?= -lpcre
+CRYPTOLIB ?= -lcrypto
+DLLIB ?= -ldl
+
 OUTEROBJS = $(CO_DIR)/matcher.o trade.o ./mailbox.o ./postoffice.o ./auctionmarket.o ./serverattr.o ./pshopmarket.o
 CLEAN += $(OUTEROBJS)
 
@@ -35,7 +39,7 @@ OBJS = map.o gdeliveryserver.o gauthclient.o gproviderserver.o ganticheatclient.
 all : gdeliveryd
 
 gdeliveryd : $(SHAREOBJ) $(OBJS) $(OUTEROBJS) $(SHARE_SOBJ)  $(LOGSTUB) $(LOGOBJ)
-	$(LD) $(LDFLAGS) -o $@ $(OUTEROBJS) $(OBJS) $(SHAREOBJ) $(SHARE_SOBJ) $(LOGSTUB) $(LOGOBJ) -lpcre -lcrypto -ldl
+	$(LD) $(LDFLAGS) -o $@ $(OUTEROBJS) $(OBJS) $(SHAREOBJ) $(SHARE_SOBJ) $(LOGSTUB) $(LOGOBJ) $(PCRELIB) $(CRYPTOLIB) $(DLLIB)
 
 include ../mk/gcc.rules.mk
 

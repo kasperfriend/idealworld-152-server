@@ -9,6 +9,13 @@
 #define _WP_SYS_POLL_H
 
 #include "winposix.h"
+/* NOTE: there is no system <poll.h> on Windows (neither MSVC nor mingw
+ * ship one); struct pollfd/WSAPOLLFD and the POLL* bits come from
+ * <winsock2.h> via winposix.h.  Only nfds_t is missing and provided here. */
+#ifndef WP_NFDS_T_DEFINED
+#define WP_NFDS_T_DEFINED
+typedef unsigned int nfds_t;
+#endif
 
 #ifndef POLLIN
 #define POLLIN   0x0300
@@ -50,7 +57,7 @@ extern "C" {
 #endif
 #ifndef WP_HAS_POLL_DECL
 #define WP_HAS_POLL_DECL
-int poll(struct pollfd *fds, unsigned long nfds, int timeout);
+int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 #endif
 #ifdef __cplusplus
 }

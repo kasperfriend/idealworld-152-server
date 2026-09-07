@@ -7,7 +7,7 @@ CFLAGS = -Wall -c -pthread
 OBJS = pollio.o 
 
 .cpp.o:	FORCE
-	$(CPP) -c  $<
+	$(CPP) $(INC) -c  $<
 
 lib: $(OBJS)
 

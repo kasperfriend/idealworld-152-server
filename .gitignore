@@ -38,7 +38,7 @@ cgame/common/cmtest*.conf
 
 # tools/ci-build.sh staging area and per step logs
 /dist/
-/.ci-build/
+/ci-build/
 
 # stray editor / patch noise
 *~
@@ -46,5 +46,5 @@ cgame/common/cmtest*.conf
 *.rej
 
 # windows cross-build (tools/ci-build-win.sh) staging area and per step logs
-/.ci-build-win/
+/ci-build-win/
 /dist-win/

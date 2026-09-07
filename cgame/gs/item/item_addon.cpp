@@ -13,7 +13,7 @@
 #include "../cooldowncfg.h"
 
 
-namespace 
+namespace addon_local
 {
 	template <typename ARG_TYPE> class arg_addon;
 
@@ -247,6 +247,7 @@ namespace
 	};
 #define MY_OFFSETOF(st,member) __builtin_offsetof(st,member)
 }
+using namespace addon_local;
 
 class enhance_durability_addon : public essence_addon
 {
@@ -332,7 +333,7 @@ public:
 
 	virtual int Activate(const addon_data & data , equip_item * item, gactive_imp *pImp)
 	{
-		Check(data);
+		this->Check(data);
 		pImp->_en_percent.walk_speed += data.arg[0];
 		pImp->_en_percent.run_speed += data.arg[0];
 		return 0;
@@ -346,7 +347,7 @@ public:
 	}
 };
 
-class enhance_speed_addon_point: public arg_addon<POINT>		// enhance param (single arg) addon
+class enhance_speed_addon_point: public arg_addon<addon_local::POINT>		// enhance param (single arg) addon
 {
 public:
 	virtual int UpdateItem(const addon_data & , equip_item *)
@@ -366,7 +367,7 @@ public:
 
 	virtual int Activate(const addon_data & data , equip_item * item, gactive_imp *pImp)
 	{
-		Check(data);
+		this->Check(data);
 		pImp->_en_point.walk_speed += *(float*)&(data.arg[0]);
 		pImp->_en_point.run_speed += *(float*)&(data.arg[0]);
 		return 0;
@@ -401,7 +402,7 @@ public:
 
 	virtual int Activate(const addon_data & data , equip_item * item, gactive_imp *pImp)
 	{
-		Check(data);
+		this->Check(data);
 		*(PARAM_TYPE*)((char*)pImp + OFFSET_IN_IMP) += *(PARAM_TYPE*)&(data.arg[0]);
 		return 0;
 	}
@@ -434,7 +435,7 @@ public:
 
 	virtual int Activate(const addon_data & data , equip_item * item, gactive_imp *pImp)
 	{
-		Check(data);
+		this->Check(data);
 		*(PARAM_TYPE*)((char*)pImp + OFFSET_IN_IMP) += *(PARAM_TYPE*)&(data.arg[0]);
 		*(PARAM_TYPE*)((char*)pImp + OFFSET_OUT_IMP) -= *(PARAM_TYPE*)&(data.arg[1]);
 		return 0;
@@ -500,7 +501,7 @@ public:
 	virtual int Activate(const addon_data & data, equip_item * item, gactive_imp *pImp){ASSERT(false);return 0;}
 	virtual int Deactivate(const addon_data & data, equip_item *, gactive_imp *pImp) {ASSERT(false);return 0;}
 };
-typedef template_enhance_damage<POINT>			enhance_damage_addon;
+typedef template_enhance_damage<addon_local::POINT>			enhance_damage_addon;
 typedef template_enhance_damage<DOUBLE_POINT>	enhance_damage_addon_2arg;
 
 template <typename ARG_TYPE>
@@ -522,7 +523,7 @@ public:
 	virtual int Activate(const addon_data & data, equip_item * item, gactive_imp *pImp){ASSERT(false);return 0;}
 	virtual int Deactivate(const addon_data & data, equip_item *, gactive_imp *pImp) {ASSERT(false);return 0;}
 };
-typedef template_enhance_magic_damage<POINT>		enhance_magic_damage_addon;
+typedef template_enhance_magic_damage<addon_local::POINT>		enhance_magic_damage_addon;
 typedef template_enhance_magic_damage<DOUBLE_POINT>	enhance_magic_damage_addon_2arg;
 
 template <typename ARG_TYPE>
@@ -553,7 +554,7 @@ public:
 		return 0;
 	}
 };
-typedef template_enhance_damage_2<POINT>			enhance_damage_addon_2;
+typedef template_enhance_damage_2<addon_local::POINT>			enhance_damage_addon_2;
 typedef template_enhance_damage_2<DOUBLE_POINT>		enhance_damage_addon_2_2arg;
 
 template <typename ARG_TYPE>
@@ -584,7 +585,7 @@ public:
 		return 0;
 	}
 };
-typedef template_enhance_magic_damage_2<POINT>			enhance_magic_damage_addon_2;
+typedef template_enhance_magic_damage_2<addon_local::POINT>			enhance_magic_damage_addon_2;
 typedef template_enhance_magic_damage_2<DOUBLE_POINT>	enhance_magic_damage_addon_2_2arg;
 
 template <typename ARG_TYPE>
@@ -613,7 +614,7 @@ public:
 		return 0;
 	}
 };
-typedef template_enhance_all_resistance<POINT>			enhance_all_resistance_addon;
+typedef template_enhance_all_resistance<addon_local::POINT>			enhance_all_resistance_addon;
 typedef template_enhance_all_resistance<DOUBLE_POINT>	enhance_all_resistance_addon_2arg;
 
 template <typename ARG_TYPE>
@@ -987,7 +988,7 @@ public:
 	}
 };
 
-class enhance_soulpower_addon: public arg_addon<POINT>				  
+class enhance_soulpower_addon: public arg_addon<addon_local::POINT>				  
 {
 public:
 	virtual int UpdateItem(const addon_data & , equip_item *)
@@ -1200,21 +1201,21 @@ public:
 	virtual int GetExpireDate(const addon_data & data){ return data.arg[1]; }
 };
 
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,hp_gen),POINT> enhance_hpgen_addon;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,mp_gen),POINT> enhance_mpgen_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,hp_gen),addon_local::POINT> enhance_hpgen_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,mp_gen),addon_local::POINT> enhance_mpgen_addon;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,hp_gen),DOUBLE_POINT> enhance_hpgen_addon_2arg;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,mp_gen),DOUBLE_POINT> enhance_mpgen_addon_2arg;
 typedef EPSA_addon<int, PERCENT_OFF+offsetof(scale_enhanced_param,hp_gen),DOUBLE_PERCENT> enhance_hpgen_scale_addon;
 typedef EPSA_addon<int, PERCENT_OFF+offsetof(scale_enhanced_param,mp_gen),DOUBLE_PERCENT> enhance_mpgen_scale_addon;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,max_hp),POINT> enhance_hp_addon;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,max_mp),POINT> enhance_mp_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,max_hp),addon_local::POINT> enhance_hp_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,max_mp),addon_local::POINT> enhance_mp_addon;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,max_hp),DOUBLE_POINT> enhance_hp_addon_2;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,max_mp),DOUBLE_POINT> enhance_mp_addon_2;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,attack),POINT> enhance_attack_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,attack),addon_local::POINT> enhance_attack_addon;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,attack),DOUBLE_POINT> enhance_attack_addon_2;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,defense),POINT> enhance_defense_addon_2;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,defense),addon_local::POINT> enhance_defense_addon_2;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,defense),DOUBLE_POINT> enhance_defense_addon_2_2arg;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,armor),POINT> enhance_armor_addon_2;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,armor),addon_local::POINT> enhance_armor_addon_2;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,armor),DOUBLE_POINT> enhance_armor_addon_2_2arg;
 typedef EPSA_addon<int, PERCENT_OFF+offsetof(scale_enhanced_param,max_hp),PERCENT> enhance_hp_scale_addon;
 typedef EPSA_addon<int, PERCENT_OFF+offsetof(scale_enhanced_param,max_mp),PERCENT> enhance_mp_scale_addon;
@@ -1229,11 +1230,11 @@ typedef EPSA_addon<int, PERCENT_OFF+offsetof(scale_enhanced_param,resistance[1])
 typedef EPSA_addon<int, PERCENT_OFF+offsetof(scale_enhanced_param,resistance[2]),PERCENT> enhance_resistance2_scale_addon;
 typedef EPSA_addon<int, PERCENT_OFF+offsetof(scale_enhanced_param,resistance[3]),PERCENT> enhance_resistance3_scale_addon;
 typedef EPSA_addon<int, PERCENT_OFF+offsetof(scale_enhanced_param,resistance[4]),PERCENT> enhance_resistance4_scale_addon;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[0]),POINT> enhance_resistance0_addon;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[1]),POINT> enhance_resistance1_addon;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[2]),POINT> enhance_resistance2_addon;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[3]),POINT> enhance_resistance3_addon;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[4]),POINT> enhance_resistance4_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[0]),addon_local::POINT> enhance_resistance0_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[1]),addon_local::POINT> enhance_resistance1_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[2]),addon_local::POINT> enhance_resistance2_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[3]),addon_local::POINT> enhance_resistance3_addon;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance[4]),addon_local::POINT> enhance_resistance4_addon;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_damage_reduce),PERCENT> enhance_damage_reduce_addon;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_damage_reduce),DOUBLE_PERCENT> enhance_damage_reduce_addon_2arg;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_magic_damage_reduce[0]),PERCENT> enhance_magic_damage_reduce0_addon;
@@ -1244,39 +1245,39 @@ typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_magic_damage_reduce[4]),PERCENT
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_crit_rate),PERCENT> enhance_crit_rate;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_crit_rate),DOUBLE_PERCENT> enhance_crit_rate_2arg;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_exp_addon),PERCENT> enhance_exp_addon;
-typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_attack_degree),POINT> enhance_attack_degree;
-typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_defend_degree),POINT> enhance_defend_degree;
+typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_attack_degree),addon_local::POINT> enhance_attack_degree;
+typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_defend_degree),addon_local::POINT> enhance_defend_degree;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_attack_degree),DOUBLE_POINT> enhance_attack_degree_2arg;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_defend_degree),DOUBLE_POINT> enhance_defend_degree_2arg;
-typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_penetration),POINT> enhance_penetration;
-typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_resilience),POINT> enhance_resilience;
+typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_penetration),addon_local::POINT> enhance_penetration;
+typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_resilience),addon_local::POINT> enhance_resilience;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_penetration),DOUBLE_POINT> enhance_penetration_2arg;
 typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_resilience),DOUBLE_POINT> enhance_resilience_2arg;
-typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_vigour_en),POINT> enhance_vigour;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,damage_high),POINT> enhance_max_damage_addon_2;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,magic_dmg_high),POINT> enhance_max_magic_addon_2;
+typedef EPSA_addon<int, MY_OFFSETOF(gactive_imp,_vigour_en),addon_local::POINT> enhance_vigour;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,damage_high),addon_local::POINT> enhance_max_damage_addon_2;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,magic_dmg_high),addon_local::POINT> enhance_max_magic_addon_2;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,damage_high),DOUBLE_POINT> enhance_max_damage_addon_2_2arg;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,magic_dmg_high),DOUBLE_POINT> enhance_max_magic_addon_2_2arg;
 
 typedef EPSA_EQ_addon<EQ_PERCENT+offsetof(equip_item::scale_data,armor),DOUBLE_PERCENT> enhance_armor_scale_addon;
 typedef EPSA_EQ_addon<EQ_PERCENT+offsetof(equip_item::scale_data,armor),PERCENT> enhance_armor_scale_addon_single;
-typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,armor),POINT> enhance_armor_addon;
+typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,armor),addon_local::POINT> enhance_armor_addon;
 typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,armor),DOUBLE_POINT> enhance_armor_range_addon;
 typedef EPSA_EQ_addon<EQ_PERCENT+offsetof(equip_item::scale_data,defense),DOUBLE_PERCENT> enhance_defense_scale_addon;
 typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,defense),DOUBLE_POINT> enhance_defense_addon;
-typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,defense),POINT> enhance_defense_addon_1arg;
+typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,defense),addon_local::POINT> enhance_defense_addon_1arg;
 
 typedef EPSA_EQ_addon<EQ_PERCENT+offsetof(equip_item::scale_data,damage),PERCENT> enhance_damage_scale_addon;
-typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,damage_high),POINT> enhance_max_damage_addon;
+typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,damage_high),addon_local::POINT> enhance_max_damage_addon;
 typedef EPSA_EQ_addon<EQ_PERCENT+offsetof(equip_item::scale_data,magic_damage),PERCENT> enhance_magic_scale_addon;
-typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,magic_damage_high),POINT> enhance_max_magic_addon;
+typedef EPSA_EQ_addon<EQ_POINT+offsetof(equip_item::base_data,magic_damage_high),addon_local::POINT> enhance_max_magic_addon;
 
 typedef EPSA_addon_spec<int, POINT_OFF+offsetof(enhanced_param,str), POINT_OFF+offsetof(enhanced_param,agi),DOUBLE_FIX_POINT> enhance_str_addon2;
 
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,str), POINT> enhance_str_addon_1arg;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,agi), POINT> enhance_agi_addon_1arg;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,vit), POINT> enhance_vit_addon_1arg;
-typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,eng), POINT> enhance_eng_addon_1arg;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,str), addon_local::POINT> enhance_str_addon_1arg;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,agi), addon_local::POINT> enhance_agi_addon_1arg;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,vit), addon_local::POINT> enhance_vit_addon_1arg;
+typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,eng), addon_local::POINT> enhance_eng_addon_1arg;
 
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,str), DOUBLE_POINT> enhance_str_addon;
 typedef EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,agi), DOUBLE_POINT> enhance_agi_addon;
@@ -2287,8 +2288,8 @@ typedef EPSA_EQ_addon<EQ_PERCENT+offsetof(equip_item::scale_data,magic_damage),D
 	INSERT_ADDON(1044,IDMRA(4,1));
 	INSERT_ADDON(1043,IDMRA(4,1));
 
-#define  STONE_MAGIC_RES_ADDON(x) EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance) + sizeof(int) * (x), POINT>
-#define  STONE_MAGIC_DMG_ADDON(x) EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,addon_damage) + sizeof(int) * (x), POINT>
+#define  STONE_MAGIC_RES_ADDON(x) EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,resistance) + sizeof(int) * (x), addon_local::POINT>
+#define  STONE_MAGIC_DMG_ADDON(x) EPSA_addon<int, POINT_OFF+offsetof(enhanced_param,addon_damage) + sizeof(int) * (x), addon_local::POINT>
 	
 	INSERT_ADDON(672 ,STONE_MAGIC_DMG_ADDON(0)); 
 	INSERT_ADDON(673 ,STONE_MAGIC_RES_ADDON(0));

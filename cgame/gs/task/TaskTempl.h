@@ -6,6 +6,7 @@
 #include <string.h>
 #include <wchar.h>
 #include <time.h>
+#include <stdint.h>
 #if defined(WIN32) || defined(_LUA_TASKTEST)
 #pragma warning(disable:4786)
 #endif
@@ -13,7 +14,7 @@
 using namespace std;
 
 #ifdef WIN32
-	#include "ExpTypes.h"
+	#include "exptypes.h"
 #elif defined LINUX
 	#include "../template/exptypes.h"
 #else
@@ -1762,12 +1763,12 @@ struct task_notify_choose_award : public task_notify_base
 
 struct task_player_notify : public task_notify_base
 {
-	unsigned long	param;
+	uintptr_t	param;
 };
 
 struct svr_monster_killed : public task_notify_base
 {
-	unsigned long	monster_id;
+	uint64_t	monster_id;
 	unsigned short	monster_num;
 	int				dps;
 	int				dph;
@@ -1787,13 +1788,13 @@ struct svr_treasure_map : public task_notify_base
 
 struct svr_new_task : public task_notify_base
 {
-	unsigned long	cur_time;
-	unsigned long	cap_task;
+	uint64_t	cur_time;
+	uintptr_t	cap_task;
 	task_sub_tags	sub_tags;
 
 	inline void set_data(
-		unsigned long _cur_time,
-		unsigned long _cap_task,
+		uint64_t _cur_time,
+		uintptr_t _cap_task,
 		const task_sub_tags& _sub_tags)
 	{
 		cur_time	= _cur_time;
@@ -1802,8 +1803,8 @@ struct svr_new_task : public task_notify_base
 	}
 
 	inline void get_data(
-		unsigned long& _cur_time,
-		unsigned long& _cap_task,
+		uint64_t& _cur_time,
+		uintptr_t& _cap_task,
 		task_sub_tags& _sub_tags) const
 	{
 		_cur_time	= cur_time;
@@ -1823,11 +1824,11 @@ struct svr_new_task : public task_notify_base
 
 struct svr_task_complete : public task_notify_base
 {
-	unsigned long	cur_time;
+	uint64_t	cur_time;
 	task_sub_tags	sub_tags;
 
 	inline void set_data(
-		unsigned long _cur_time,
+		uint64_t _cur_time,
 		const task_sub_tags& _sub_tags
 		)
 	{
@@ -1836,7 +1837,7 @@ struct svr_task_complete : public task_notify_base
 	}
 
 	inline void get_data(
-		unsigned long& _cur_time,
+		uint64_t& _cur_time,
 		task_sub_tags& _sub_tags) const
 	{
 		_cur_time	= cur_time;
@@ -1855,12 +1856,12 @@ struct svr_task_complete : public task_notify_base
 
 struct svr_task_err_code : public task_notify_base
 {
-	unsigned long err_code;
+	uint64_t err_code;
 };
 
 struct svr_task_dyn_time_mark : public task_notify_base
 {
-	unsigned long time_mark;
+	uint64_t time_mark;
 	unsigned short version;
 };
 
@@ -2939,7 +2940,7 @@ public:
 	float CalcOneGlobalExp			(TaskInterface* pTask, int nIndex) const;
 	bool CanShowInExclusiveUI		(TaskInterface* pTask, unsigned long ulCurTime) const;
 #else
-	void NotifyClient				(TaskInterface* pTask, const ActiveTaskEntry* pEntry, unsigned char uReason, unsigned long ulCurTime, unsigned long ulParam = 0, int dps = 0, int dph = 0) const;
+	void NotifyClient				(TaskInterface* pTask, const ActiveTaskEntry* pEntry, unsigned char uReason, unsigned long ulCurTime, uintptr_t ulParam = 0, int dps = 0, int dph = 0) const;
 	bool CheckGlobalRequired		(TaskInterface* pTask, unsigned long ulSubTaskId, const TaskPreservedData* pPreserve, const TaskGlobalData* pGlobal, unsigned short reason) const;
 	bool CheckKillMonster			(TaskInterface* pTask, ActiveTaskList* pList, ActiveTaskEntry* pEntry, unsigned long ulTemplId, unsigned long ulLev, bool bTeam, float fRand, int dps, int dph) const;
 	bool CheckKillPlayer			(TaskInterface* pTask, ActiveTaskList* pList, ActiveTaskEntry* pEntry, int iOccupation, int iLevel, bool bGender, int iForce, float fRand) const;

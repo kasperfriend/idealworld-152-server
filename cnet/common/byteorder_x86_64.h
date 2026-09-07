@@ -27,11 +27,13 @@ namespace GNET
 		__asm__ ("bswapl %0" : "=r"(v) : "0"(x));
 		return v;
 	}
-	inline unsigned long byteorder_64(unsigned long x)
+	/* unsigned long long (not unsigned long): on LLP64 targets such as
+	 * 64-bit Windows, unsigned long is only 32 bits wide, which both
+	 * truncated the value and made clang reject the bswapq below.  The
+	 * builtin is identical to the hand-written asm on every target. */
+	inline unsigned long long byteorder_64(unsigned long long x)
 	{
-		register unsigned long v;
-		__asm__("bswapq %0":"=r"(v):"0"(x));
-		return v;
+		return __builtin_bswap64(x);
 	}
 
 #elif defined WIN32

@@ -451,7 +451,7 @@ ActiveTaskEntry* ATaskTempl::DeliverTask(
 	unsigned char uIndex = static_cast<unsigned char>(pEntry - aEntries);
 
 	pEntry->m_ID				= static_cast<unsigned short>(m_ID);
-	pEntry->m_ulTemplAddr		= reinterpret_cast<unsigned long>(this);
+	pEntry->m_ulTemplAddr		= reinterpret_cast<uintptr_t>(this);
 	pEntry->m_ParentIndex		= uParentIndex;
 	pEntry->m_PrevSblIndex		= 0xff;
 	pEntry->m_NextSblIndex		= 0xff;
@@ -467,7 +467,7 @@ ActiveTaskEntry* ATaskTempl::DeliverTask(
 #endif
 	if (ulCaptainTask)
 	{
-		pEntry->m_ulCapTemplAddr = reinterpret_cast<unsigned long>(GetTaskTemplMan()->GetTopTaskByID(ulCaptainTask));
+		pEntry->m_ulCapTemplAddr = reinterpret_cast<uintptr_t>(GetTaskTemplMan()->GetTopTaskByID(ulCaptainTask));
 		if (pEntry->m_ulCapTemplAddr) pEntry->m_uCapTaskId = static_cast<unsigned short>(ulCaptainTask);
 		else
 		{
@@ -1774,7 +1774,7 @@ unsigned long ATaskTempl::CheckDeliverTask(
 		reinterpret_cast<const ActiveTaskEntry*>(ulCapId),
 		TASK_SVR_NOTIFY_NEW,
 		ulCurTime,
-		reinterpret_cast<unsigned long>(&tags));
+		reinterpret_cast<uintptr_t>(&tags));
 
 	// version 81£¬ ¶Ô°ü¹ü¼ÏËø
 	if (m_bCompareItemAndInventory)
@@ -1953,7 +1953,7 @@ bool ATaskTempl::DeliverAward(
 		NULL,
 		TASK_SVR_NOTIFY_COMPLETE,
 		ulCurTime,
-		reinterpret_cast<unsigned long>(&sub_tags));
+		reinterpret_cast<uintptr_t>(&sub_tags));
 
 	// ¼ì²éMask
 	pList->UpdateTaskMask(*pTask->GetTaskMask());
@@ -2169,13 +2169,13 @@ void TaskInterface::InitActiveTaskList()
 			if (entryNextSbl.m_PrevSblIndex != i) entry.m_NextSblIndex = 0xff;
 		}
 		if (entry.m_ParentIndex == 0xff)
-			entry.m_ulTemplAddr = reinterpret_cast<unsigned long>(pMan->GetTopTaskByID(entry.m_ID));
+			entry.m_ulTemplAddr = reinterpret_cast<uintptr_t>(pMan->GetTopTaskByID(entry.m_ID));
 		else
 		{
 			const ATaskTempl* pParent = pLst->m_TaskEntries[entry.m_ParentIndex].GetTempl();
 
 			if (pParent)
-				entry.m_ulTemplAddr = reinterpret_cast<unsigned long>(pParent->GetConstSubById(entry.m_ID));
+				entry.m_ulTemplAddr = reinterpret_cast<uintptr_t>(pParent->GetConstSubById(entry.m_ID));
 			else
 				entry.m_ulTemplAddr = 0;
 		}
@@ -2206,7 +2206,7 @@ void TaskInterface::InitActiveTaskList()
 
 		if (entry.m_uCapTaskId)
 		{
-			entry.m_ulCapTemplAddr = reinterpret_cast<unsigned long>(GetTaskTemplMan()->GetTopTaskByID(entry.m_uCapTaskId));
+			entry.m_ulCapTemplAddr = reinterpret_cast<uintptr_t>(GetTaskTemplMan()->GetTopTaskByID(entry.m_uCapTaskId));
 			if (!entry.m_ulCapTemplAddr)
 			{
 				entry.m_uCapTaskId = 0;
@@ -2586,7 +2586,10 @@ void ATaskTempl::OnServerNotify(
 	const task_notify_base* pNotify,
 	size_t sz) const
 {
-	unsigned long ulTime, ulCaptainTask;
+	/* NOTE (Windows): widened to match the LP64 wire structs they unpack
+	 * (svr_new_task/svr_task_complete); values still fit, pointers round-trip. */
+	uint64_t ulTime;
+	uintptr_t ulCaptainTask;
 	ActiveTaskList* pLst;
 	const ATaskTempl* pSub;
 	task_sub_tags sub_tags;

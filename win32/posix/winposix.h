@@ -37,14 +37,39 @@
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <afunix.h>
+/* NOTE: no <afunix.h> here - older mingw sysroots lack it.  AF_UNIX and
+ * struct sockaddr_un come from our own <sys/un.h> instead. */
+/* The game server has its own `struct MSG` (cgame/common/message.h); keep
+ * winuser.h from claiming that name for the Win32 message struct.  The
+ * PMSG/LPMSG typedefs are unaffected, and nothing here uses the bare
+ * Win32 MSG type. */
+#define MSG WP_WinMSG
 #include <windows.h>
+/* windef.h defines near/far as empty (16-bit relics); gs world.cpp uses
+ * them as parameter names.  Undefine so the names stay usable. */
+#ifdef near
+#undef near
+#endif
+#ifdef far
+#undef far
+#endif
+#undef MSG
+/* autoteamman.h has an enum member called WAIT_TIMEOUT (600); the Win32
+ * wait-status macro would rewrite it to 258.  Nothing in this tree uses the
+ * Win32 meaning, so drop the macro right after the headers are done. */
+#undef WAIT_TIMEOUT
 #include <io.h>
+#include <direct.h>
 #include <process.h>
 #include <errno.h>
+#include <assert.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <time.h>
 #include <sys/types.h>
+
+/* NOTE: no struct timezone here - current mingw-w64 <time.h> already defines
+ * it, and a second definition breaks every translation unit. */
 
 #ifdef __cplusplus
 extern "C" {
@@ -286,7 +311,7 @@ typedef uint64_t u_int64_t;
 /* ---- poll() event bits (Winsock WSAPoll values) ------------------------- */
 #ifndef POLLIN
 #define POLLIN   0x0300
-#define POLLPRI  0x0200
+#define POLLPRI  0x0400
 #define POLLOUT  0x0010
 #define POLLERR  0x0001
 #define POLLHUP  0x0002
@@ -321,15 +346,59 @@ typedef uint64_t u_int64_t;
 #define O_NOCTTY 0
 #endif
 
+/* ---- 64-bit file offsets ------------------------------------------------- */
+/* NOTE: no lseek/getuid macros here on purpose.  A function-style macro would
+ * also rewrite mingw's own later declarations (e.g. <unistd.h> pulled in by
+ * game files), producing conflicting prototypes.  The two live lseek call
+ * sites (tranlog.h) call _lseeki64() directly on Windows, and the single
+ * getuid check (worldmanager.cpp) is compiled out. */
+
 /* ---- functions implemented by winposix.cpp ------------------------------ */
 int         ioctl(int fd, unsigned long request, ...);
 int         fcntl(int fd, int cmd, ...);
 int         pipe(int fds[2]);
 struct tm * localtime_r(const time_t *t, struct tm *buf);
 struct tm * gmtime_r(const time_t *t, struct tm *buf);
+char      * ctime_r(const time_t *t, char *buf);
+int         gettimeofday(struct timeval *tv, void *tz);
+int         clock_gettime(int clk_id, struct timespec *tp);
 ssize_t     pread(int fd, void *buf, size_t len, long long off);
 ssize_t     pwrite(int fd, const void *buf, size_t len, long long off);
+/* NOTE: this prototype is spelled (int, off_t) - identical to mingw
+ * <unistd.h>'s - because storage TUs include both headers and two C
+ * declarations may only share a name when they share a signature.
+ * off_t is 64-bit in every TU that needs it (the WDB steps build with
+ * _FILE_OFFSET_BITS=64); the definition takes long long so it also
+ * serves 32-bit callers (zero-extended) correctly. */
+#ifndef __clang__
+int         ftruncate(int fd, off_t len);
+#endif
+/* NOTE: FILE is not declared yet at this point (this header deliberately
+ * avoids <stdio.h>), so forward-declare it exactly the way the CRT does.
+ * The _FILE_DEFINED guard is MSVC's own spelling, which mingw-w64's
+ * <stdio.h> honors, so a later real include is a no-op, not a clash. */
+#ifndef _FILE_DEFINED
+struct _iobuf;
+typedef struct _iobuf FILE;
+#define _FILE_DEFINED
+#endif
+void        setlinebuf(FILE *f);
+ssize_t     readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t     writev(int fd, const struct iovec *iov, int iovcnt);
+int         fsync(int fd);
+int         scandir(const char *dir, struct dirent ***namelist,
+                    int (*filter)(const struct dirent *),
+                    int (*compar)(const struct dirent **,
+                                  const struct dirent **));
+int         alphasort(const struct dirent **a, const struct dirent **b);
 long        sysconf(int name);
+
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME 0
+#endif
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+#endif
 
 /* private helpers used by the patched engine loop (thread.cpp) */
 HANDLE      wp_signal_event(void);
@@ -388,6 +457,41 @@ inline int wp_getsockopt(int fd, int level, int optname,
 #define recvfrom     wp_recvfrom
 #define setsockopt   wp_setsockopt
 #define getsockopt   wp_getsockopt
+
+/* ---- C++-linkage overloads (must NOT be extern "C") ---------------------- */
+/* MSVCRT already exports 1-argument mkdir(); the two-argument POSIX form used
+ * by db.h/accessdb.cpp/storagewdb.h overloads it.  C++ linkage keeps the
+ * overload legal (two extern "C" functions may not share a name).  ftruncate
+ * used to live here too, but storage TUs include <unistd.h> after this
+ * header, and a C declaration may not follow a C++ overload - so ftruncate
+ * is declared in the extern "C" block above with mingw's exact signature
+ * and our definition interposes at link time like the socket shims. */
+int mkdir(const char *path, int mode);
+/* gs TaskProcess/TaskServer pass long* (LP64: long==time_t; LLP64: 32-bit).
+ * C++ overload like mkdir above: resolves the call, converts, forwards. */
+struct tm *localtime(long *t);
+
+/* inet_aton() is missing from Winsock; gdeliveryd parses listener addresses
+ * with it.  Full dotted quads go through InetPton, short forms fall back to
+ * inet_addr, matching the glibc acceptance. */
+inline int wp_inet_aton(const char *cp, struct in_addr *inp)
+{
+	if (cp && inp)
+	{
+		if (InetPtonA(AF_INET, cp, inp) == 1)
+			return 1;
+		{
+			unsigned long a = inet_addr(cp);
+			if (a != INADDR_NONE)
+			{
+				inp->s_addr = a;
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+#define inet_aton wp_inet_aton
 #endif
 
 #endif /* _WINPOSIX_H_ */

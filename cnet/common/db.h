@@ -409,20 +409,20 @@ public:
 	void read( page_index_t idx, void *data )
 	{
 		count_read++;
-		if ( pread( fd, data, PAGESIZE, (off_t)idx * PAGESIZE ) != PAGESIZE )
+		if ( pread( fd, data, PAGESIZE, (long long)idx * PAGESIZE ) != PAGESIZE )
 			throw Exception();
 	}
 
 	void write( page_index_t idx, const void *data )
 	{
 		count_write++;
-		if ( pwrite( fd, data, PAGESIZE, (off_t)idx * PAGESIZE ) != PAGESIZE )
+		if ( pwrite( fd, data, PAGESIZE, (long long)idx * PAGESIZE ) != PAGESIZE )
 			throw Exception();
 	}
 
 	void truncate( page_index_t idx )
 	{
-		if ( ftruncate( fd, (off_t)idx * PAGESIZE ) == -1 )
+		if ( ftruncate( fd, (long long)idx * PAGESIZE ) == -1 )
 			throw Exception();
 	}
 

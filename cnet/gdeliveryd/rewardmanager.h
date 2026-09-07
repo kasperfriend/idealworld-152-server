@@ -49,7 +49,7 @@ class Reward
 	BufferedFlag reward_flag;  	//DBRewardMature协议是否正在进行数据库操作
 	bool logout;
 	friend class RewardManager;
-	GRewardItemVector Reward::DumpRewardList();
+	GRewardItemVector DumpRewardList();
 public:
 	Reward():roleid(0), userid(0), consume_points(0), bonus_reward(0), logout(false)
 	{

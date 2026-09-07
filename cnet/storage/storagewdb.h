@@ -677,6 +677,22 @@ public:
 		destdir += buffer;
 		mkdir( destdir.c_str(), 0755 );
 
+#ifdef WIN32
+		/* No /bin/cp on Windows: same recursive backup via xcopy.  Slashes
+		 * are flipped because xcopy treats '/' as a flag prefix. */
+		std::string wsrc1 = datadir, wsrc2 = logdir, wdest = destdir;
+		for ( size_t wi = 0; wi < wsrc1.size(); wi++ ) if ( wsrc1[wi] == '/' ) wsrc1[wi] = '\\';
+		for ( size_t wi = 0; wi < wsrc2.size(); wi++ ) if ( wsrc2[wi] == '/' ) wsrc2[wi] = '\\';
+		for ( size_t wi = 0; wi < wdest.size(); wi++ ) if ( wdest[wi] == '/' ) wdest[wi] = '\\';
+		std::string scmd = "xcopy /E /I /Y /Q \"";
+		if( !increment )
+		{
+			scmd += wsrc1 + "\" \"" + wdest + "\\\"";
+			scmd += " & xcopy /E /I /Y /Q \"";
+		}
+		scmd += wsrc2 + "\" \"" + wdest + "\\\"";
+		system( scmd.c_str() );
+#else
 		std::string scmd = "/bin/cp -r ";
 		if( !increment )
 		{
@@ -685,6 +701,7 @@ public:
 		}
 		scmd += logdir + " " + destdir + "/";
 		system( scmd.c_str() );
+#endif
 	}
 
 	static void * BackupThread( void * pParam )
@@ -693,7 +710,9 @@ public:
 
 		sigset_t sigs;
 		sigfillset(&sigs);
+#ifndef WIN32
 		pthread_sigmask(SIG_BLOCK, &sigs, NULL);
+#endif
 
 		static unsigned int times = 0;
 		static unsigned int times2 = 0;

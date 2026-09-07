@@ -951,7 +951,11 @@ world_manager::InitBase(const char * section)
 		return -123;
 	}
 
+#ifdef WIN32
+	if(0) /* no root account on Windows; check is Unix-only */
+#else
 	if(!_world_limit.allowroot && (getuid() == 0 || geteuid()==0))
+#endif
 	{
 		__PRINTINFO("目前的设置不允许root启动程序\n");
 		return -124;

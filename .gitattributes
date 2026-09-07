@@ -1,0 +1,19 @@
+# Keep build scripts and makefiles LF everywhere.  The Windows CI job checks
+# the tree out on a Windows runner; a CRLF-converted shell script or Makefile
+# would break the MSYS2 build, so these paths must always check out as LF.
+*.sh text eol=lf
+Makefile text eol=lf
+Makefile.* text eol=lf
+*.mk text eol=lf
+Rules.make text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+# C/C++ sources also stay LF: backslash-newline splices do not survive
+# CRLF checkouts (backslash-CR-LF does not splice), so LF everywhere
+# keeps Windows checkouts compiling the same bytes Linux does.
+*.c text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.hrp text eol=lf
+*.inl text eol=lf
