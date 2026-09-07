@@ -391,7 +391,7 @@ void CNPCChaseOnGroundAgent::FollowFoundPath()
 		{
 			// Search whether the current pos in Path found!
 			posLast = m_PathPredict.empty()? m_p2Start:m_PathPredict.back();
-			for(DWORD i =0; i< m_PathFound.size(); i++)
+			for(::DWORD i =0; i< m_PathFound.size(); i++)
 			{
 				if(m_PathFound[i].u==posLast.u && m_PathFound[i].v == posLast.v)
 				{

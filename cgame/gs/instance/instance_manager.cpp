@@ -989,7 +989,7 @@ instance_world_manager::HandleSwitchRequest(int link_id,int user_id,int localsid
 
 	//ÉèÖÃ³¬Ê±
 	switch_task *pTask = new switch_task(pPlayer,pPlane,this);
-	pPlayer->base_info.race = (int)(abase::timer_task*)pTask;
+	pPlayer->base_info.race = (int)(intptr_t)(abase::timer_task*)pTask;
 	pPlayer->base_info.faction = pTask->GetTimerIndex();
 	pPlayer->Unlock();
 	

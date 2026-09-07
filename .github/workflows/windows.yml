@@ -167,14 +167,15 @@ jobs:
             for log in ci-build-win/*.log; do
               echo "### $log"
               echo '```'
-              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | sort -u | head -n 25
-              grep -E "note: in instantiation|required from here|In file included from" "$log" 2>/dev/null | sort -u | head -n 12
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | sort -u | head -n 15
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | tail -n 20
+              grep -E "note: in instantiation|required from here|In file included from|previous declaration|previous definition|candidates are|no known conversion|ambiguous|invalid operands|no matching function|loses information|differing user-defined" "$log" 2>/dev/null | sort -u | head -n 12
               echo '```'
               echo ""
             done
             echo "</details>"
           } > digest-full.md
-          head -c 50000 digest-full.md > digest.md
+          head -c 60000 digest-full.md > digest.md
           echo "digest bytes: $(wc -c < digest-full.md)"
           okc=0; failc=0
           for f in ci-build-win/*.status; do
@@ -311,14 +312,15 @@ jobs:
             for log in ci-build-win/*.log; do
               echo "### $log"
               echo '```'
-              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | sort -u | head -n 25
-              grep -E "note: in instantiation|required from here|In file included from" "$log" 2>/dev/null | sort -u | head -n 12
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | sort -u | head -n 15
+              grep -E "error:|Error [0-9]+|undefined reference|cannot find|No such file|fatal error|FAILED" "$log" 2>/dev/null | tail -n 20
+              grep -E "note: in instantiation|required from here|In file included from|previous declaration|previous definition|candidates are|no known conversion|ambiguous|invalid operands|no matching function|loses information|differing user-defined" "$log" 2>/dev/null | sort -u | head -n 12
               echo '```'
               echo ""
             done
             echo "</details>"
           } > digest-full.md
-          head -c 50000 digest-full.md > digest.md
+          head -c 60000 digest-full.md > digest.md
           echo "digest bytes: $(wc -c < digest-full.md)"
           okc=0; failc=0
           for f in ci-build-win/*.status; do

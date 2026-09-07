@@ -133,12 +133,7 @@
 #define SIG_ERR ((void (*)(int))-1)
 #endif
 
-static void wsa_init()
-{
-	WSADATA wd;
-	if (WSAStartup(MAKEWORD(2, 2), &wd) != 0)
-		abort();
-}
+static void wsa_init(void);
 
 /* Map a Winsock error code to a Linux-flavoured errno value. */
 static int wp_wsa_to_errno(int wsa)
@@ -186,10 +181,6 @@ static int wp_wsa_to_errno(int wsa)
 	}
 }
 
-void wp_map_wsaerr(void)
-{
-	errno = wp_wsa_to_errno(WSAGetLastError());
-}
 
 /* ---- pseudo fd table ----------------------------------------------------- */
 #define WSOCK_FD_BASE 0x10000000
@@ -301,6 +292,10 @@ namespace
 		                          const struct timeval *);
 		int     (WINAPI *gethostname_)(char *, int);
 		int     (WINAPI *ioctlsocket_)(SOCKET, long, u_long *);
+		int     (WINAPI *WSAGetLastError_)(void);
+		int     (WINAPI *WSAStartup_)(WORD, LPWSADATA);
+		int     (WINAPI *WSADuplicateSocketW_)(SOCKET, DWORD, LPWSAPROTOCOL_INFOW);
+		SOCKET  (WINAPI *WSASocketW_)(int, int, int, LPWSAPROTOCOL_INFOW, DWORD, DWORD);
 		Ws()
 		{
 			HMODULE m = GetModuleHandleA("ws2_32.dll");
@@ -322,9 +317,25 @@ namespace
 			select_       = (int (WINAPI *)(int,fd_set*,fd_set*,fd_set*,const struct timeval*))GetProcAddress(m, "select");
 			gethostname_  = (int (WINAPI *)(char*,int))GetProcAddress(m, "gethostname");
 			ioctlsocket_  = (int (WINAPI *)(SOCKET,long,u_long*))GetProcAddress(m, "ioctlsocket");
+			WSAGetLastError_ = (int (WINAPI *)(void))GetProcAddress(m, "WSAGetLastError");
+			WSAStartup_ = (int (WINAPI *)(WORD,LPWSADATA))GetProcAddress(m, "WSAStartup");
+			WSADuplicateSocketW_ = (int (WINAPI *)(SOCKET,DWORD,LPWSAPROTOCOL_INFOW))GetProcAddress(m, "WSADuplicateSocketW");
+			WSASocketW_ = (SOCKET (WINAPI *)(int,int,int,LPWSAPROTOCOL_INFOW,DWORD,DWORD))GetProcAddress(m, "WSASocketW");
 		}
 	} g_ws;
 	int wp_fd(SOCKET s) { return (int)(intptr_t)s; }
+}
+
+static void wsa_init()
+{
+	WSADATA wd;
+	if (g_ws.WSAStartup_(MAKEWORD(2, 2), &wd) != 0)
+		abort();
+}
+
+void wp_map_wsaerr(void)
+{
+	errno = wp_wsa_to_errno(g_ws.WSAGetLastError_());
 }
 
 /* ---- socket API (shadows the ws2_32 imports so pseudo fds work) ---------- */
@@ -564,9 +575,9 @@ int dup(int fd)
 		}
 		WSAPROTOCOL_INFOW info;
 		memset(&info, 0, sizeof(info));
-		if (WSADuplicateSocketW(s, GetCurrentProcessId(), &info) == SOCKET_ERROR)
+		if (g_ws.WSADuplicateSocketW_(s, GetCurrentProcessId(), &info) == SOCKET_ERROR)
 			return wp_socket_err();
-		SOCKET ns = WSASocketW(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO,
+		SOCKET ns = g_ws.WSASocketW_(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO,
 		                       FROM_PROTOCOL_INFO, &info, 0, WSA_FLAG_OVERLAPPED);
 		if (ns == INVALID_SOCKET)
 			return wp_socket_err();
@@ -1153,6 +1164,12 @@ struct tm * localtime_r(const time_t *t, struct tm *buf)
 	return buf;
 }
 
+
+struct tm *localtime(long *t)
+{
+	time_t tt = (time_t)*t;
+	return ::localtime(&tt);
+}
 struct tm * gmtime_r(const time_t *t, struct tm *buf)
 {
 	if (!t || !buf) { errno = EINVAL; return NULL; }

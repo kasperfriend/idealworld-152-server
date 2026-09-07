@@ -362,7 +362,9 @@ ssize_t     pwrite(int fd, const void *buf, size_t len, long long off);
  * off_t is 64-bit in every TU that needs it (the WDB steps build with
  * _FILE_OFFSET_BITS=64); the definition takes long long so it also
  * serves 32-bit callers (zero-extended) correctly. */
+#ifndef __clang__
 int         ftruncate(int fd, off_t len);
+#endif
 /* NOTE: FILE is not declared yet at this point (this header deliberately
  * avoids <stdio.h>), so forward-declare it exactly the way the CRT does.
  * The _FILE_DEFINED guard is MSVC's own spelling, which mingw-w64's
@@ -457,6 +459,9 @@ inline int wp_getsockopt(int fd, int level, int optname,
  * is declared in the extern "C" block above with mingw's exact signature
  * and our definition interposes at link time like the socket shims. */
 int mkdir(const char *path, int mode);
+/* gs TaskProcess/TaskServer pass long* (LP64: long==time_t; LLP64: 32-bit).
+ * C++ overload like mkdir above: resolves the call, converts, forwards. */
+struct tm *localtime(long *t);
 
 /* inet_aton() is missing from Winsock; gdeliveryd parses listener addresses
  * with it.  Full dotted quads go through InetPton, short forms fall back to

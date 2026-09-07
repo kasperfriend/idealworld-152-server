@@ -98,7 +98,7 @@ exec "$ZIG" c++ -target x86_64-windows-gnu -D__MINGW_FORTIFY_LEVEL=0 \
 	"$STATE/winposix.a" "$STATE/winiconv.o" "$STATE/wsyslog.o" \
 	"$STATE/wrusage.o" "$STATE/wpmd5.o" "$STATE/wpcre.o" "$STATE/wpopenssl.o" \
 	"$STATE/wpthread.o" \
-	-lws2_32 -lbcrypt -lpsapi
+	-lbcrypt -lpsapi
 EOF
 	chmod +x "$TC/cc" "$TC/cxx" "$TC/ld"
 	# cskill/Makefilelib hardcodes -finput-charset/-fexec-charset=ISO-8859-1
@@ -110,11 +110,11 @@ EOF
 args=()
 for a in "\$@"; do
 	case "\$a" in
-	-finput-charset=ISO-8859-1) args+=("-finput-charset=UTF-8");;
+	-finput-charset=ISO-8859-1) ;;
 	# NB: -fexec-charset is STRIPPED, not rewritten: an explicit UTF-8
 	# exec charset makes clang validate (and reject) the escaped GBK bytes
 	# in string literals, while the default passes \xNN through untouched.
-	-fexec-charset=ISO-8859-1) ;;
+	-fexec-charset=ISO-8859-1) args+=("-Xclang" "-fexec-charset=ISO-8859-1");;
 	*) args+=("\$a");;
 	esac
 done
@@ -143,7 +143,7 @@ else
 exec "$WP_CXX" "\$@" \
 	"$STATE/winposix.a" "$STATE/winiconv.o" "$STATE/wsyslog.o" \
 	"$STATE/wrusage.o" \
-	-lws2_32 -lwinpthread -lbcrypt -lpsapi
+	-lwinpthread -lbcrypt -lpsapi
 EOF
 	chmod +x "$TC/ld"
 	WP_LD="$TC/ld"
@@ -201,7 +201,7 @@ if [ "$MODE" != "zig" ]; then
 	# Current mingw-w64 CRTs already export clock_gettime(); tell
 	# winposix.cpp to skip its own copy (a duplicate C definition
 	# would fail the winposix link).
-	CFLAGS="$CFLAGS -DWP_HAVE_CLOCK_GETTIME=1"
+	CFLAGS="$CFLAGS -DWP_HAVE_CLOCK_GETTIME=1 -mbig-obj"
 fi
 
 # cnet daemons are built through their own Makefiles with fully overridden
@@ -331,7 +331,7 @@ step "gs" make -C "$ROOT/cgame/gs" gs \
 	INC="$GAMEINC" CMLIB="$ROOT/cgame/libcommon.a $ROOT/cgame/libonline.a \
 	$ROOT/cgame/libgs/gs/*.o $ROOT/cgame/libgs/io/*.o $ROOT/cgame/libgs/db/*.o \
 	$ROOT/cskill/skill/*.o $ROOT/cskill/skills/*.o $ROOT/cgame/libgs/log/*.o \
-	$ROOT/cgame/collision/libTrace.a" ALLLIB="-lws2_32 $PTHREADLIB -lbcrypt $PCRELIB $CRYPTOLIB" \
+	$ROOT/cgame/collision/libTrace.a" ALLLIB="$PTHREADLIB -lbcrypt $PCRELIB $CRYPTOLIB" \
 	-k -j"$JOBS"
 
 # ------------------------------------------------------------- staging ------

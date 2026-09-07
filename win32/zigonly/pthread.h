@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 /* --- threads -------------------------------------------------------- */
-typedef struct { DWORD tid; HANDLE ev; } pthread_t;
+typedef struct { ::DWORD tid; HANDLE ev; } pthread_t;
 typedef int pthread_attr_t; /* opaque; call sites always pass NULL */
 
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
@@ -102,7 +102,7 @@ int pthread_cond_signal(pthread_cond_t *c);
 int pthread_cond_broadcast(pthread_cond_t *c);
 
 /* --- thread-local storage ------------------------------------------- */
-typedef DWORD pthread_key_t;
+typedef ::DWORD pthread_key_t;
 
 int pthread_key_create(pthread_key_t *key, void (*destructor)(void *));
 int pthread_key_delete(pthread_key_t key);
@@ -122,6 +122,15 @@ int pthread_sigmask(int how, const sigset_t *set, sigset_t *oldset);
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+/* gs keeps std::map<pthread_t,...>; give the struct a strict ordering. */
+inline bool operator<(pthread_t a, pthread_t b)
+{ return a.tid != b.tid ? a.tid < b.tid : (intptr_t)a.ev < (intptr_t)b.ev; }
+inline bool operator==(pthread_t a, pthread_t b)
+{ return a.tid == b.tid && a.ev == b.ev; }
+inline bool operator!=(pthread_t a, pthread_t b) { return !(a == b); }
 #endif
 
 #endif /* WP_ZIG_PTHREAD_H */

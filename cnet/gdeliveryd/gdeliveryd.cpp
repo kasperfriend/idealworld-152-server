@@ -32,8 +32,15 @@
 
 /* The Windows build driver overrides DEFINES wholesale, so __USER__ (passed
  * via -D__USER__=... by the daemon Makefiles on Linux) may be undefined. */
-#ifndef __USER__
+#ifdef __USER__
+#undef __USER__
+#endif
 #define __USER__ "unknown"
+#ifndef __DATE__
+#define __DATE__ "WinBuild"
+#endif
+#ifndef __TIME__
+#define __TIME__ "WinBuild"
 #endif
 #include "referencemanager.h"
 #include "rewardmanager.h"
