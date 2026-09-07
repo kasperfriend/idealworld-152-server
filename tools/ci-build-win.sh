@@ -299,6 +299,7 @@ step "cskill-lib" make -C "$CSKSRC/skill" -f ../Makefilelib \
 if [ "$MODE" = "zig" ]; then
 	cp -f "$CSKSRC/skill/"*.o "$ROOT/cskill/skill/" 2>/dev/null || true
 	cp -f "$CSKSRC/skills/"*.o "$ROOT/cskill/skills/" 2>/dev/null || true
+	cp -f "$CSKSRC/skill/libskill.a" "$ROOT/cskill/skill/" 2>/dev/null || true
 fi
 
 
