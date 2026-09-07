@@ -303,6 +303,7 @@ namespace
 		unsigned long (WINAPI *inet_addr_)(const char *);
 		char *(WINAPI *inet_ntoa_)(struct in_addr);
 		int     (WINAPI *__WSAFDIsSet_)(SOCKET, fd_set *);
+		int     (WINAPI *inet_pton_)(int, const char *, void *);
 		Ws()
 		{
 			HMODULE m = GetModuleHandleA("ws2_32.dll");
@@ -335,6 +336,7 @@ namespace
 			inet_addr_ = (unsigned long (WINAPI *)(const char *))GetProcAddress(m, "inet_addr");
 			inet_ntoa_ = (char *(WINAPI *)(struct in_addr))GetProcAddress(m, "inet_ntoa");
 			__WSAFDIsSet_ = (int (WINAPI *)(SOCKET,fd_set *))GetProcAddress(m, "__WSAFDIsSet");
+			inet_pton_ = (int (WINAPI *)(int,const char *,void *))GetProcAddress(m, "inet_pton");
 		}
 	} g_ws;
 	int wp_fd(SOCKET s) { return (int)(intptr_t)s; }
@@ -532,6 +534,37 @@ u_long ntohl(u_long x) { return g_ws.ntohl_(x); }
 unsigned long inet_addr(const char *s) { return g_ws.inet_addr_(s); }
 char *inet_ntoa(struct in_addr a) { return g_ws.inet_ntoa_(a); }
 int __WSAFDIsSet(SOCKET s, fd_set *f) { return g_ws.__WSAFDIsSet_(s, f); }
+int inet_pton(int af, const char *s, void *d) { return g_ws.inet_pton_(af, s, d); }
+
+/* dllimport callers (winsock2.h declares __declspec(dllimport)) emit __imp_X
+ * references.  Satisfy them here so no -lws2_32 is needed (its import thunks
+ * would duplicate our bare interposers under both GNU ld and lld-link). */
+void * __imp___WSAFDIsSet = (void *)__WSAFDIsSet;
+void * __imp_accept = (void *)accept;
+void * __imp_bind = (void *)bind;
+void * __imp_closesocket = (void *)closesocket;
+void * __imp_connect = (void *)connect;
+void * __imp_gethostname = (void *)gethostname;
+void * __imp_getpeername = (void *)getpeername;
+void * __imp_getsockname = (void *)getsockname;
+void * __imp_getsockopt = (void *)getsockopt;
+void * __imp_htonl = (void *)htonl;
+void * __imp_htons = (void *)htons;
+void * __imp_inet_addr = (void *)inet_addr;
+void * __imp_inet_ntoa = (void *)inet_ntoa;
+void * __imp_inet_pton = (void *)inet_pton;
+void * __imp_ioctlsocket = (void *)ioctlsocket;
+void * __imp_listen = (void *)listen;
+void * __imp_ntohl = (void *)ntohl;
+void * __imp_ntohs = (void *)ntohs;
+void * __imp_recv = (void *)recv;
+void * __imp_recvfrom = (void *)recvfrom;
+void * __imp_select = (void *)select;
+void * __imp_send = (void *)send;
+void * __imp_sendto = (void *)sendto;
+void * __imp_setsockopt = (void *)setsockopt;
+void * __imp_shutdown = (void *)shutdown;
+void * __imp_socket = (void *)socket;
 
 /* ---- CRT descriptor layer ------------------------------------------------ */
 

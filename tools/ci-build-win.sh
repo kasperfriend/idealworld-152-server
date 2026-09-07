@@ -154,7 +154,7 @@ EOF
 	CRYPTOLIB="-lcrypto"
 	PTHREADLIB="-lwinpthread"
 	DLLIB=""
-	WS2LIB="-lws2_32"
+	WS2LIB=""
 fi
 
 # ---------------------------------------------------------------- flags
@@ -186,7 +186,7 @@ GAMEINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cgame/include -I$ROOT/cgame \
 # Linux Makefiles append these with `+=`, which command-line overrides
 # discard, so the driver re-applies them.
 D_NET="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE -D__MINGW_FORTIFY_LEVEL=0"
-D_GAME="-DWIN32 -D_DEBUG -D__THREAD_SPIN_LOCK__ -D__MINGW_FORTIFY_LEVEL=0"
+D_GAME="-DWIN32 -D_DEBUG -D__THREAD_SPIN_LOCK__ -D__MINGW_FORTIFY_LEVEL=0 -DUSE_LOGCLIENT"
 D_LOGC="-DUSE_LOGCLIENT"
 D_WDB="-DUSE_WDB -DMPPC_4WAY -DUSE_TRANSACTION -D_FILE_OFFSET_BITS=64"
 
@@ -210,6 +210,10 @@ fi
 # DEFINES / INCLUDES / LDFLAGS.
 build_net_daemon() { # <stepname> <dir> <target> <extra defs>
 	local name="$1" dir="$2" target="$3" defs="$4"
+	# Shared _m.o are reused across daemons; stale flagless copies would
+	# reintroduce header-inline Log defs next to log_m.o strong defs
+	# (COFF COMDAT-vs-plain duplicate). Rebuild with this daemon's flags.
+	rm -f "$ROOT/cnet/common/"*_m.o "$ROOT/cnet/io/"*_m.o "$ROOT/cnet/logclient/"*_m.o
 	step "$name" make -C "$ROOT/$dir" \
 		CC="$WP_CC" CPP="$WP_CXX" LD="$WP_LD" AR="$WP_AR" \
 		DEFINES="$D_NET $CFLAGS $defs" \
@@ -274,9 +278,9 @@ cnet_lib() { # <stepname> <dir> <makefile> <target> <extra defs> <extra includes
 		DEFINES="$D_NET $CFLAGS $defs" INCLUDES="-I$ROOT/$dir $NETINC $extrainc" \
 		LDFLAGS="-O0" CFLAGS="$CFLAGS" "$tgt" -k -j"$JOBS"
 }
-cnet_lib "cnet-io-lib"     cnet/io      ""       lib ""  ""
-cnet_lib "cnet-gamed-lib"  cnet/gamed   ""       lib "-D__USE_SPEC_GAMEDATASEND__" "-I$ROOT/cnet/gamed/header -I$ROOT/cnet/gamed/header/include/common"
-cnet_lib "cnet-gdbclient"  cnet/gdbclient ""     lib ""  ""
+cnet_lib "cnet-io-lib"     cnet/io      ""       lib "-DUSE_LOGCLIENT"  ""
+cnet_lib "cnet-gamed-lib"  cnet/gamed   ""       lib "-D__USE_SPEC_GAMEDATASEND__ -DUSE_LOGCLIENT" "-I$ROOT/cnet/gamed/header -I$ROOT/cnet/gamed/header/include/common"
+cnet_lib "cnet-gdbclient"  cnet/gdbclient ""     lib "-DUSE_LOGCLIENT"  ""
 cnet_lib "cnet-logclient"  cnet/logclient Makefile.gs lib "-DUSE_LOGCLIENT" ""
 # The cskill tree is GBK-encoded and Makefilelib forces ISO-8859-1 charsets,
 # which zig rejects.  For zig, compile an escaped copy (every high byte as
@@ -291,7 +295,7 @@ CSKINC=" -I$P1 ${P2:+-I$P2} -I$CSKSRC/skill -I$CSKSRC -I$CSKSRC/expr \
  -I$CSKSRC/simulator -I$CSKSRC/gen/src"
 step "cskill-lib" make -C "$CSKSRC/skill" -f ../Makefilelib \
 	CC="$CSKCC" CPP="$CSKCC" LD="$WP_LD" AR="$WP_AR" \
-	DEFINES="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE $CFLAGS -D_SKILL_SERVER" \
+	DEFINES="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE $CFLAGS -D_SKILL_SERVER -DUSE_LOGCLIENT" \
 	INCLUDES="$CSKINC" LDFLAGS="-O0" CFLAGS="$CFLAGS" lib -k -j"$JOBS"
 
 # The gs link below reads the skill objects from their in-tree paths; when
@@ -326,6 +330,10 @@ step "cgame-common" make -C "$ROOT/cgame/common" \
 step "cgame-collision" make -C "$ROOT/cgame/collision" \
 	CC="$WP_CC $D_GAME $CFLAGS" CPP="$WP_CXX $D_GAME $CFLAGS" LD="$WP_LD" AR="$WP_AR crs" \
 	INC="$GAMEINC" -k -j"$JOBS"
+# cgame/io/pollio.o vanishes silently under zig (sub-make recursion);
+# build it explicitly first: either it works (step passes) or the real
+# error shows in its own log section.
+step "cgame-io" $WP_CXX $D_GAME $CFLAGS $GAMEINC -c "$ROOT/cgame/io/pollio.cpp" -o "$ROOT/cgame/io/pollio.o"
 step "cgame-libs" make -C "$ROOT/cgame" lib \
 	CC="$WP_CC $D_GAME $CFLAGS" CPP="$WP_CXX $D_GAME $CFLAGS" LD="$WP_LD" AR="$WP_AR crs" \
 	INC="$GAMEINC" -k -j"$JOBS"
