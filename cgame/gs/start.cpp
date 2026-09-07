@@ -134,8 +134,7 @@ extern unsigned long long s2c_cmd_number_counter2[1024];
 }
 int main(int argn , char ** argv)
 {
-		printf("Compiled " __DATE__ " " __TIME__ "
-");
+		printf("Compiled " __DATE__ " " __TIME__ "\n");
 	
 	if(system("/bin/touch foo"))
 	{

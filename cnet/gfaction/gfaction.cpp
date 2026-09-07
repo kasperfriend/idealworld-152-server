@@ -16,8 +16,7 @@ int main(int argc, char *argv[])
 {
 	if (argc != 2 || access(argv[1], R_OK) == -1)
 	{
-		printf("Compiled " __DATE__ " " __TIME__ "
-");
+		printf("Compiled " __DATE__ " " __TIME__ "\n");
 		std::cerr << "Usage: " << argv[0] << " configurefile" << std::endl;
 		exit(-1);
 	}

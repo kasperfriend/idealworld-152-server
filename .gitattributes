@@ -8,3 +8,12 @@ Makefile.* text eol=lf
 Rules.make text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+# C/C++ sources also stay LF: backslash-newline splices do not survive
+# CRLF checkouts (backslash-CR-LF does not splice), so LF everywhere
+# keeps Windows checkouts compiling the same bytes Linux does.
+*.c text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.hrp text eol=lf
+*.inl text eol=lf
