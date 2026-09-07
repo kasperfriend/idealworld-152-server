@@ -1350,7 +1350,7 @@ namespace
 		{
 			InitializeCriticalSection(&cs);
 		}
-	} g_timer;
+	} wp_g_timer;
 	volatile bool g_timer_stop = false;
 
 	unsigned __stdcall wp_timer_thread_proc(void *arg)
@@ -1359,9 +1359,9 @@ namespace
 		for (;;)
 		{
 			long long us;
-			EnterCriticalSection(&g_timer.cs);
-			us = g_timer.period_us;
-			LeaveCriticalSection(&g_timer.cs);
+			EnterCriticalSection(&wp_g_timer.cs);
+			us = wp_g_timer.period_us;
+			LeaveCriticalSection(&wp_g_timer.cs);
 			if (us <= 0)
 			{
 				Sleep(20);
@@ -1381,10 +1381,10 @@ int setitimer(int which, const struct itimerval *value,
 	{
 		memset(ovalue, 0, sizeof(*ovalue));
 	}
-	EnterCriticalSection(&g_timer.cs);
+	EnterCriticalSection(&wp_g_timer.cs);
 	if (!value)
 	{
-		g_timer.period_us = 0;
+		wp_g_timer.period_us = 0;
 	}
 	else
 	{
@@ -1392,14 +1392,14 @@ int setitimer(int which, const struct itimerval *value,
 			((long long)value->it_value.tv_sec * 1000000LL) + value->it_value.tv_usec;
 		long long per =
 			((long long)value->it_interval.tv_sec * 1000000LL) + value->it_interval.tv_usec;
-		g_timer.period_us = per > 0 ? per : (iv > 0 ? iv : 0);
-		if (!g_timer.thread_started)
+		wp_g_timer.period_us = per > 0 ? per : (iv > 0 ? iv : 0);
+		if (!wp_g_timer.thread_started)
 		{
 			_beginthreadex(NULL, 0, wp_timer_thread_proc, NULL, 0, NULL);
-			g_timer.thread_started = true;
+			wp_g_timer.thread_started = true;
 		}
 	}
-	LeaveCriticalSection(&g_timer.cs);
+	LeaveCriticalSection(&wp_g_timer.cs);
 	(void)g_timer_stop;
 	return 0;
 }
