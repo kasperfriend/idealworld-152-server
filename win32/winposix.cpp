@@ -1165,11 +1165,6 @@ struct tm * localtime_r(const time_t *t, struct tm *buf)
 }
 
 
-struct tm *localtime(long *t)
-{
-	time_t tt = (time_t)*t;
-	return ::localtime(&tt);
-}
 struct tm * gmtime_r(const time_t *t, struct tm *buf)
 {
 	if (!t || !buf) { errno = EINVAL; return NULL; }
@@ -1513,4 +1508,11 @@ extern "C" int ftruncate(int fd, long long len)
 extern "C" void setlinebuf(FILE *f)
 {
 	if (f) setvbuf(f, NULL, _IOLBF, 0);
+}
+
+/* C++-linkage overload (NOT extern "C"): gs passes long* on LLP64. */
+struct tm *localtime(long *t)
+{
+	time_t tt = (time_t)*t;
+	return ::localtime(&tt);
 }

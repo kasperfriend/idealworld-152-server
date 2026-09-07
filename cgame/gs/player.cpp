@@ -4471,7 +4471,8 @@ gplayer_dispatcher::send_timestamp()
 	time_t t1 = time(NULL);
 	struct tm tm1;
 	localtime_r(&t1, &tm1);
-	CMD::Make<CMD::server_timestamp>::From(_tbuf,t1, -(tm1.tm_gmtoff/60), world_manager::GetLuaVersion());
+	long wp_tz = 0; _get_timezone(&wp_tz); /* tm_gmtoff shim: no tm_gmtoff on Win32 */
+	CMD::Make<CMD::server_timestamp>::From(_tbuf,t1, (wp_tz/60), world_manager::GetLuaVersion());
 	send_ls_msg(pPlayer, _tbuf);
 }
 

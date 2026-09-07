@@ -45,6 +45,14 @@
  * Win32 MSG type. */
 #define MSG WP_WinMSG
 #include <windows.h>
+/* windef.h defines near/far as empty (16-bit relics); gs world.cpp uses
+ * them as parameter names.  Undefine so the names stay usable. */
+#ifdef near
+#undef near
+#endif
+#ifdef far
+#undef far
+#endif
 #undef MSG
 /* autoteamman.h has an enum member called WAIT_TIMEOUT (600); the Win32
  * wait-status macro would rewrite it to 258.  Nothing in this tree uses the

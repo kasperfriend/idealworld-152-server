@@ -134,8 +134,7 @@ extern unsigned long long s2c_cmd_number_counter2[1024];
 }
 int main(int argn , char ** argv)
 {
-		printf("Compiled " __DATE__ " " __TIME__ "
-");
+		printf("Compiled WinBuild WinBuild\n");
 	
 	if(system("/bin/touch foo"))
 	{
@@ -146,7 +145,8 @@ int main(int argn , char ** argv)
 	time_t now = time(NULL);
 	struct tm tm1; 
 	localtime_r(&now, &tm1);
-	if(tm1.tm_gmtoff == 28800) //北京时区才修改TZ 环境变量 
+	long wp_tz = 0; _get_timezone(&wp_tz);
+	if((-wp_tz) == 28800) //北京时区才修改TZ 环境变量 
 	{
 		putenv("TZ=Asia/Shanghai");
 	}

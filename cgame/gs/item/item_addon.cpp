@@ -333,7 +333,7 @@ public:
 
 	virtual int Activate(const addon_data & data , equip_item * item, gactive_imp *pImp)
 	{
-		Check(data);
+		this->Check(data);
 		pImp->_en_percent.walk_speed += data.arg[0];
 		pImp->_en_percent.run_speed += data.arg[0];
 		return 0;
@@ -367,7 +367,7 @@ public:
 
 	virtual int Activate(const addon_data & data , equip_item * item, gactive_imp *pImp)
 	{
-		Check(data);
+		this->Check(data);
 		pImp->_en_point.walk_speed += *(float*)&(data.arg[0]);
 		pImp->_en_point.run_speed += *(float*)&(data.arg[0]);
 		return 0;
@@ -402,7 +402,7 @@ public:
 
 	virtual int Activate(const addon_data & data , equip_item * item, gactive_imp *pImp)
 	{
-		Check(data);
+		this->Check(data);
 		*(PARAM_TYPE*)((char*)pImp + OFFSET_IN_IMP) += *(PARAM_TYPE*)&(data.arg[0]);
 		return 0;
 	}
@@ -435,7 +435,7 @@ public:
 
 	virtual int Activate(const addon_data & data , equip_item * item, gactive_imp *pImp)
 	{
-		Check(data);
+		this->Check(data);
 		*(PARAM_TYPE*)((char*)pImp + OFFSET_IN_IMP) += *(PARAM_TYPE*)&(data.arg[0]);
 		*(PARAM_TYPE*)((char*)pImp + OFFSET_OUT_IMP) -= *(PARAM_TYPE*)&(data.arg[1]);
 		return 0;

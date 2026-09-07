@@ -114,7 +114,7 @@ for a in "\$@"; do
 	# NB: -fexec-charset is STRIPPED, not rewritten: an explicit UTF-8
 	# exec charset makes clang validate (and reject) the escaped GBK bytes
 	# in string literals, while the default passes \xNN through untouched.
-	-fexec-charset=ISO-8859-1) args+=("-Xclang" "-fexec-charset=ISO-8859-1");;
+	-fexec-charset=ISO-8859-1) ;;
 	*) args+=("\$a");;
 	esac
 done
@@ -201,7 +201,7 @@ if [ "$MODE" != "zig" ]; then
 	# Current mingw-w64 CRTs already export clock_gettime(); tell
 	# winposix.cpp to skip its own copy (a duplicate C definition
 	# would fail the winposix link).
-	CFLAGS="$CFLAGS -DWP_HAVE_CLOCK_GETTIME=1 -mbig-obj"
+	CFLAGS="$CFLAGS -DWP_HAVE_CLOCK_GETTIME=1 -Wa,-mbig-obj"
 fi
 
 # cnet daemons are built through their own Makefiles with fully overridden
