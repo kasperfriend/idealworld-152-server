@@ -363,6 +363,15 @@ ssize_t     pwrite(int fd, const void *buf, size_t len, long long off);
  * _FILE_OFFSET_BITS=64); the definition takes long long so it also
  * serves 32-bit callers (zero-extended) correctly. */
 int         ftruncate(int fd, off_t len);
+/* NOTE: FILE is not declared yet at this point (this header deliberately
+ * avoids <stdio.h>), so forward-declare it exactly the way the CRT does.
+ * The _FILE_DEFINED guard is MSVC's own spelling, which mingw-w64's
+ * <stdio.h> honors, so a later real include is a no-op, not a clash. */
+#ifndef _FILE_DEFINED
+struct _iobuf;
+typedef struct _iobuf FILE;
+#define _FILE_DEFINED
+#endif
 void        setlinebuf(FILE *f);
 ssize_t     readv(int fd, const struct iovec *iov, int iovcnt);
 ssize_t     writev(int fd, const struct iovec *iov, int iovcnt);

@@ -5,7 +5,8 @@
 #include <hashmap.h>
 
 /* NOTE: the pre-2007 `#else // Windows` branch once lived here, redefining
- * abase::Rand*/fastalloc/item_data/addon_data/prerequisition inline because
+ * the abase Rand helpers, fastalloc, item_data, addon_data and
+ * prerequisition inline because
  * those headers did not exist on Windows then.  They all compile on
  * Windows today, and the duplicate definitions break any TU that also
  * reaches the real headers, so just use the real headers everywhere. */

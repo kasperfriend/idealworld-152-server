@@ -111,7 +111,10 @@ args=()
 for a in "\$@"; do
 	case "\$a" in
 	-finput-charset=ISO-8859-1) args+=("-finput-charset=UTF-8");;
-	-fexec-charset=ISO-8859-1) args+=("-fexec-charset=UTF-8");;
+	# NB: -fexec-charset is STRIPPED, not rewritten: an explicit UTF-8
+	# exec charset makes clang validate (and reject) the escaped GBK bytes
+	# in string literals, while the default passes \xNN through untouched.
+	-fexec-charset=ISO-8859-1) ;;
 	*) args+=("\$a");;
 	esac
 done
@@ -180,8 +183,8 @@ GAMEINC=" -I$P1 ${P2:+-I$P2} -I$ROOT/cgame/include -I$ROOT/cgame \
 
 # Linux Makefiles append these with `+=`, which command-line overrides
 # discard, so the driver re-applies them.
-D_NET='-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE -D__MINGW_FORTIFY_LEVEL=0 -D__USER__=\\\"WinBuild\\\"'
-D_GAME='-DWIN32 -D_DEBUG -D__THREAD_SPIN_LOCK__ -D__MINGW_FORTIFY_LEVEL=0 -D__USER__=\\\"WinBuild\\\"'
+D_NET="-DWIN32 -D_REENTRANT_ -D_GNU_SOURCE -D__MINGW_FORTIFY_LEVEL=0"
+D_GAME="-DWIN32 -D_DEBUG -D__THREAD_SPIN_LOCK__ -D__MINGW_FORTIFY_LEVEL=0"
 D_LOGC="-DUSE_LOGCLIENT"
 D_WDB="-DUSE_WDB -DMPPC_4WAY -DUSE_TRANSACTION -D_FILE_OFFSET_BITS=64"
 
