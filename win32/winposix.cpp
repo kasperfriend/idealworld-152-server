@@ -296,6 +296,13 @@ namespace
 		int     (WINAPI *WSAStartup_)(WORD, LPWSADATA);
 		int     (WINAPI *WSADuplicateSocketW_)(SOCKET, DWORD, LPWSAPROTOCOL_INFOW);
 		SOCKET  (WINAPI *WSASocketW_)(int, int, int, LPWSAPROTOCOL_INFOW, DWORD, DWORD);
+		u_short (WINAPI *htons_)(u_short);
+		u_short (WINAPI *ntohs_)(u_short);
+		u_long  (WINAPI *htonl_)(u_long);
+		u_long  (WINAPI *ntohl_)(u_long);
+		unsigned long (WINAPI *inet_addr_)(const char *);
+		char *(WINAPI *inet_ntoa_)(struct in_addr);
+		int     (WINAPI *__WSAFDIsSet_)(SOCKET, fd_set *);
 		Ws()
 		{
 			HMODULE m = GetModuleHandleA("ws2_32.dll");
@@ -321,6 +328,13 @@ namespace
 			WSAStartup_ = (int (WINAPI *)(WORD,LPWSADATA))GetProcAddress(m, "WSAStartup");
 			WSADuplicateSocketW_ = (int (WINAPI *)(SOCKET,DWORD,LPWSAPROTOCOL_INFOW))GetProcAddress(m, "WSADuplicateSocketW");
 			WSASocketW_ = (SOCKET (WINAPI *)(int,int,int,LPWSAPROTOCOL_INFOW,DWORD,DWORD))GetProcAddress(m, "WSASocketW");
+			htons_ = (u_short (WINAPI *)(u_short))GetProcAddress(m, "htons");
+			ntohs_ = (u_short (WINAPI *)(u_short))GetProcAddress(m, "ntohs");
+			htonl_ = (u_long (WINAPI *)(u_long))GetProcAddress(m, "htonl");
+			ntohl_ = (u_long (WINAPI *)(u_long))GetProcAddress(m, "ntohl");
+			inet_addr_ = (unsigned long (WINAPI *)(const char *))GetProcAddress(m, "inet_addr");
+			inet_ntoa_ = (char *(WINAPI *)(struct in_addr))GetProcAddress(m, "inet_ntoa");
+			__WSAFDIsSet_ = (int (WINAPI *)(SOCKET,fd_set *))GetProcAddress(m, "__WSAFDIsSet");
 		}
 	} g_ws;
 	int wp_fd(SOCKET s) { return (int)(intptr_t)s; }
@@ -501,6 +515,23 @@ int closesocket(SOCKET s)
 {
 	return g_ws.closesocket_(s);
 }
+
+int ioctlsocket(SOCKET s, long cmd, u_long *arg)
+{
+	SOCKET real = g_fds.get(wp_fd(s));
+	if (real == INVALID_SOCKET) { errno = EBADF; return SOCKET_ERROR; }
+	if (g_ws.ioctlsocket_(real, cmd, arg) == SOCKET_ERROR)
+		return wp_socket_err();
+	return 0;
+}
+
+u_short htons(u_short x) { return g_ws.htons_(x); }
+u_short ntohs(u_short x) { return g_ws.ntohs_(x); }
+u_long htonl(u_long x) { return g_ws.htonl_(x); }
+u_long ntohl(u_long x) { return g_ws.ntohl_(x); }
+unsigned long inet_addr(const char *s) { return g_ws.inet_addr_(s); }
+char *inet_ntoa(struct in_addr a) { return g_ws.inet_ntoa_(a); }
+int __WSAFDIsSet(SOCKET s, fd_set *f) { return g_ws.__WSAFDIsSet_(s, f); }
 
 /* ---- CRT descriptor layer ------------------------------------------------ */
 

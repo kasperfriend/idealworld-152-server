@@ -133,6 +133,7 @@ EOF
 	CRYPTOLIB=""
 	DLLIB=""
 	PTHREADLIB=""
+	WS2LIB=""
 else
 	WP_CC="${WP_CC:-gcc}"; WP_CXX="${WP_CXX:-g++}"; WP_AR="${WP_AR:-ar}"
 	echo "toolchain: native ($WP_CC / $WP_CXX)"
@@ -143,7 +144,7 @@ else
 exec "$WP_CXX" "\$@" \
 	"$STATE/winposix.a" "$STATE/winiconv.o" "$STATE/wsyslog.o" \
 	"$STATE/wrusage.o" \
-	-lwinpthread -lbcrypt -lpsapi
+	-lws2_32 -lwinpthread -lbcrypt -lpsapi
 EOF
 	chmod +x "$TC/ld"
 	WP_LD="$TC/ld"
@@ -153,6 +154,7 @@ EOF
 	CRYPTOLIB="-lcrypto"
 	PTHREADLIB="-lwinpthread"
 	DLLIB=""
+	WS2LIB="-lws2_32"
 fi
 
 # ---------------------------------------------------------------- flags
@@ -331,7 +333,7 @@ step "gs" make -C "$ROOT/cgame/gs" gs \
 	INC="$GAMEINC" CMLIB="$ROOT/cgame/libcommon.a $ROOT/cgame/libonline.a \
 	$ROOT/cgame/libgs/gs/*.o $ROOT/cgame/libgs/io/*.o $ROOT/cgame/libgs/db/*.o \
 	$ROOT/cskill/skill/*.o $ROOT/cskill/skills/*.o $ROOT/cgame/libgs/log/*.o \
-	$ROOT/cgame/collision/libTrace.a" ALLLIB="$PTHREADLIB -lbcrypt $PCRELIB $CRYPTOLIB" \
+	$ROOT/cgame/collision/libTrace.a" ALLLIB="$WS2LIB $PTHREADLIB -lbcrypt $PCRELIB $CRYPTOLIB" \
 	-k -j"$JOBS"
 
 # ------------------------------------------------------------- staging ------
