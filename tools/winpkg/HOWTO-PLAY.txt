@@ -1,0 +1,68 @@
+=====================================================================
+ idealworld 152 server - HOW TO PLAY   (short version)
+=====================================================================
+
+1) WHAT TO ADD, AND WHERE
+-------------------------
+  a) GAME DATA - the only thing this package cannot include.
+     Put your PW 1.5.2 server data package into
+
+         <this folder>\gs\data\
+
+     so that at least these exist:
+
+         gs\data\elements.data       gs\data\tasks.data
+         gs\data\dyn_tasks.data      gs\data\world_targets.sev
+         gs\data\aipolicy.data       gs\data\npcgen.data
+         gs\data\precinct.sev        gs\data\region.sev
+         gs\data\path.sev
+         gs\data\movemap\   gs\data\watermap\   gs\data\airmap\
+         gs\data\world\map\     (plus b01\ a01\ a02\ a05\ a06\ a07\
+                                 if you use the arenas/instances)
+
+     Where it comes from: a PW 1.5.2 era server data package, or
+     extracted from a matching game client.  Without it the 7 network
+     daemons still run, but the game world (gs) cannot start.
+
+  b) A GAME CLIENT - a PW 1.5.2 era game client, pointed at this PC on
+     port 9001 (patch its server list the usual way for that client).
+
+  Nothing else to add.  Configs, databases, log folders and the runtime
+  .dll files are already in place.
+
+
+2) WHAT TO RUN
+--------------
+  Double-click, in this order:
+
+      START-ALL.BAT    starts the server (7 windows - leave them open)
+      START-GS.BAT     starts the game world (after you did step 1a)
+      STATUS.BAT       shows the processes and the listening ports
+      STOP-ALL.BAT     stops everything
+
+  It is up when STATUS.BAT shows port 9001 LISTENING.
+  Extra worlds:  START-GS.BAT arena01   (one world = one window).
+
+
+3) HOW TO GET IN GAME
+---------------------
+  * start the game client
+  * server / IP :  this PC's LAN IP   (127.0.0.1 if the client runs on
+                   the same machine)
+  * port        :  9001
+  * account     :  ANY name
+  * password    :  ANY password
+        this build accepts every login and makes it a GM - there is no
+        account server and no user database to fill in
+  * create a character and play
+
+  Friends on your LAN: allow TCP 9001 through the Windows firewall.
+
+
+IF SOMETHING GOES WRONG
+  A daemon window that closes prints its reason first - nearly always a
+  missing .dll (keep the .dll files in this folder and start the server
+  with START-ALL.BAT) or a port already in use (run STATUS.BAT).
+  More detail: README-FIRST.TXT in the package, and RUNBOOK.MD section
+  "0b. Running on Windows".
+=====================================================================

@@ -136,7 +136,13 @@ int main(int argn , char ** argv)
 {
 		printf("Compiled " __DATE__ " " __TIME__ "\n");
 	
+#ifdef WIN32
+	/* cmd.exe has no /bin/touch: probe writability with plain file I/O
+	 * instead, otherwise gs.exe always aborts its startup check. */
+	if(FILE * wprobe = fopen("foo", "ab")) fclose(wprobe); else
+#else
 	if(system("/bin/touch foo"))
+#endif
 	{
 		printf("文件系统不可写，无法进行后继的初始化操作\n");
 		return -1;
