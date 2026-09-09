@@ -17,3 +17,7 @@ Rules.make text eol=lf
 *.hpp text eol=lf
 *.hrp text eol=lf
 *.inl text eol=lf
+
+# Windows launcher scripts must check out with CRLF or cmd.exe can misparse
+# them (label/goto handling); tools/package-win.sh normalizes them anyway.
+*.bat text eol=crlf

@@ -71,6 +71,17 @@ daemon_field() { echo "$1" | cut -d"|" -f"$2"; }
 
 pidfile_of() { echo "$PIDDIR/$1.pid"; }
 
+# Windows builds install <daemon>.exe (tools/ci-build-win.sh -> dist-win/bin);
+# Linux builds install <daemon>.  Rewrite the executable of a command line to
+# the .exe when that is what is present, so the same table works for both.
+# No-op on Linux, where the extensionless binary exists.
+exe_fix() { # <cmd line> -> <cmd line with .exe if needed>
+	local c="$1" bin rest
+	bin="${c%% *}"; rest="${c#"$bin"}"
+	if [ ! -f "$bin" ] && [ -f "$bin.exe" ]; then bin="$bin.exe"; fi
+	echo "$bin$rest"
+}
+
 # Daemons fork helpers (e.g. gauthd), so every daemon is started as its own
 # session/process-group and the pidfile holds the group id.  "is running"
 # and "stop" therefore operate on the whole group.
@@ -126,7 +137,9 @@ start_one() { # <name|dir|cmd|port|sig>  OR  <gs-world>
 	if is_running "$name"; then ok "$name already running (pid $(cat "$(pidfile_of "$name")"))"; return 0; fi
 
 	local bin; bin="$(echo "$cmd" | awk '{print $1}')"
-	if [ ! -x "$dir/$bin" ]; then fail "$name: missing executable $dir/$bin"; return 1; fi
+	if [ ! -x "$dir/$bin" ] && [ ! -x "$dir/$bin.exe" ]; then
+		fail "$name: missing executable $dir/$bin (or $bin.exe)"; return 1
+	fi
 
 	if [ "$dir" = gs ]; then
 		local missing; missing="$(gs_data_missing || true)"
@@ -137,7 +150,7 @@ start_one() { # <name|dir|cmd|port|sig>  OR  <gs-world>
 		fi
 	fi
 
-	( cd "$dir" && \
+	( cd "$dir" && cmd="$(exe_fix "$cmd")" && \
 		if command -v setsid >/dev/null 2>&1; then
 			setsid nohup $cmd </dev/null >>"$LOGDIR/$name.log" 2>&1 & echo $! >"$PIDDIR/$name.pid"
 		else
@@ -255,10 +268,10 @@ cmd_console() {
 		if [ "$n" = "$name" ]; then
 			[ "$n" != logservice ] && is_running "$n" && { fail "$name is already running - stop it first"; return 1; }
 			info "running in foreground from $(daemon_field "$d" 2); Ctrl-C to abort"
-			cd "$(daemon_field "$d" 2)" && exec $cmd
+			cd "$(daemon_field "$d" 2)" && exec $(exe_fix "$(daemon_field "$d" 3)")
 		fi
 	done
-	[ "${name#gs-}" != "$name" ] && { info "running gs world ${name#gs-} in foreground; Ctrl-C to abort"; cd gs && exec ./gs "${name#gs-}"; }
+	[ "${name#gs-}" != "$name" ] && { info "running gs world ${name#gs-} in foreground; Ctrl-C to abort"; cd gs && exec $(exe_fix "./gs") "${name#gs-}"; }
 	fail "unknown daemon: $name"
 	return 1
 }

@@ -16,6 +16,25 @@ The release contains **only the compiled binaries** — configs, game data
 **[RUNBOOK.md](RUNBOOK.md)** for the full path from tarball to running
 server.
 
+## Windows
+
+```sh
+# MSYS2 MINGW64 shell
+pacman -S --needed make zip unzip mingw-w64-x86_64-gcc mingw-w64-x86_64-openssl mingw-w64-x86_64-pcre
+./tools/ci-build-win.sh                        # products land in dist-win/bin/*.exe
+./tools/package-win.sh dist-win pw-server.zip  # the one-click archive
+```
+
+Prefer a download?  The **Build Windows** workflow publishes
+`idealworld-152-server-windows-oneclick.zip` (unpack → double-click
+`START-ALL.BAT`) together with `HOWTO-PLAY.TXT`, the short guide that says
+what to add and where, what to run, and how to get in game.
+
+Either way you still have to supply the PW-152 game data (`gs/data/`) and a
+matching game client — see **[RUNBOOK.md §0b](RUNBOOK.md)** for that, the
+start order under `cmd.exe`, and the Windows-only caveats (no `fork`, no
+AF_UNIX, no cross-process `SIGUSR1`).
+
 ## One-click launch
 
 ```sh

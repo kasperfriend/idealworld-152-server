@@ -79,7 +79,165 @@ process per world listed in `gs/worlds.list`.
 
 ---
 
+## 0b. Running on Windows
+
+The same tree builds as native Win64 executables (`tools/ci-build-win.sh`,
+GitHub workflow **Build Windows**), producing all eight daemons:
+
+```
+glinkd.exe  gdeliveryd.exe  gauthd.exe   gfactiond.exe
+gamedbd.exe uniquenamed.exe logservice.exe gs.exe
+```
+
+Everything below §0b in this runbook (config patches, data files, ports,
+accounts) applies unchanged — only how you get the binaries, satisfy their
+DLL dependencies and start/stop them is different.
+
+### Getting the binaries
+
+* **One-click package (easiest).**  A manual *Build Windows* run publishes
+  **`idealworld-152-server-windows-oneclick.zip`**: the 8 `.exe` files in
+  their per-daemon runtime layout with the configs already patched for
+  127.0.0.1, the mingw runtime DLLs they import, the launchers
+  `START-ALL.BAT` / `START-GS.BAT` / `STOP-ALL.BAT` / `STATUS.BAT`, and the
+  plain-text guides `HOWTO-PLAY.TXT` (3 steps: what to add, what to run, how
+  to log in) and `README-FIRST.TXT`.  Unpack it and double-click
+  `START-ALL.BAT`.  The same `HOWTO-PLAY.TXT` is also published next to the
+  archive as its own release asset, so you can read it before downloading.
+  The archive is produced by `tools/package-win.sh [binaries] [output.zip]`,
+  which you can also run yourself once you have the `.exe` files.  It still
+  does not contain the game data or the client — see the table at the end of
+  this section.
+* **From CI.** Every *Build Windows* run (push to the `Windows` branch, or a
+  pull request against `main`) uploads the artifact
+  `dist-win-native-<run-number>` (MSYS2/mingw64 build), which contains both
+  the one-click zip and the bare binaries.  A GitHub **Release** is published
+  only for manual (*Run workflow*) runs of that job.
+* **Build it on Windows yourself** — install [MSYS2](https://msys2.org), then
+  in an **MSYS2 MINGW64** shell:
+
+  ```sh
+  pacman -S --needed make zip unzip mingw-w64-x86_64-gcc \
+                     mingw-w64-x86_64-openssl mingw-w64-x86_64-pcre
+  cd /path/to/idealworld-152-server
+  ./tools/ci-build-win.sh                        # -> dist-win/bin/*.exe
+  ./tools/package-win.sh dist-win pw-server.zip  # -> the one-click archive
+  ```
+
+  (`ci-build-win.sh` also has a `ZIG=…` mode that cross-compiles the same
+  targets from Linux; it links *stubs* for pcre/openssl instead of the real
+  libraries, so use it for build testing, not for a server you intend to run.)
+
+### Runtime DLLs (not packaged in the bare binaries!)
+
+The mingw64 link line is `-lws2_32 -lwinpthread -lbcrypt -lpsapi -lpcre
+-lcrypto` plus the C++ runtime.  `tools/package-win.sh` derives each
+binary's import table with `objdump` and copies exactly those libraries from
+the mingw `bin` directory into the package root (`START-ALL.BAT` prepends
+that root to `PATH`); typically:
+
+```
+libwinpthread-1.dll   libgcc_s_seh-1.dll   libstdc++-6.dll
+libcrypto-3-x64.dll   libpcre-1.dll
+```
+
+If you use the bare `.exe` files instead of the one-click zip, copy the same
+files next to them (they live in `C:\msys64\mingw64\bin`) or add that
+directory to `PATH`.  `objdump -p gs.exe | grep "DLL Name"` lists what your
+own build really imports.
+
+### Assembling the tree
+
+`tools/setup-runtime.sh` accepts the Windows binaries (`dist-win/`, an
+unpacked `…-windows-x86_64` release directory or its `.tar.gz`) and stages
+them as `.exe` next to the patched configs, so run it once from the MSYS2
+shell:
+
+```sh
+cd /path/to/idealworld-152-server
+./tools/setup-runtime.sh /c/pw dist-win
+```
+
+After that you do not need MSYS2 any more: `C:\pw\gauthd\gauthd.exe`,
+`C:\pw\glinkd\glinkd.exe`, … are ordinary Win64 programs.  The one-click
+zip is exactly this tree plus the launchers, the guides and the DLLs.
+
+### Starting the daemons
+
+Each daemon must be started **from its own directory** (all config paths are
+relative) — that is what `START-ALL.BAT` does.  By hand, in `cmd.exe`, one
+window per daemon, in this order:
+
+```bat
+cd /d C:\pw\gauthd      & gauthd.exe gauthd.conf
+cd /d C:\pw\gamedbd     & gamedbd.exe gamesys.conf
+cd /d C:\pw\uniquenamed & uniquenamed.exe uniquenamed.conf
+cd /d C:\pw\gfaction    & gfactiond.exe gamesys.conf
+cd /d C:\pw\gdeliveryd  & gdeliveryd.exe gamesys.conf
+cd /d C:\pw\glinkd      & glinkd.exe gamesys.conf 1
+cd /d C:\pw\logservice  & logservice.exe logservice.conf
+cd /d C:\pw\gs          & gs.exe gs01
+```
+
+`./pwctl.sh` also works from the MSYS2 shell (it starts the `.exe` daemons,
+keeps pidfiles/logs and prints the port table), but see the stopping caveat
+below.
+
+### Stopping
+
+There is no cross-process `SIGUSR1` on Windows: `kill()` in
+`win32/winposix.cpp` ignores the pid and only raises the signal inside the
+calling process, so the clean-checkpoint stop that `pwctl.sh` uses for
+`gamedbd`/`uniquenamed` cannot be delivered.  `STOP-ALL.BAT` therefore uses
+`taskkill`.  You can also close a daemon's console window (the shim maps
+`CTRL_CLOSE_EVENT` to `SIGTERM`, `Ctrl-C` to `SIGINT` — `ctrl_handler` in
+`win32/winposix.cpp`).  The embedded WDB storage then recovers from its logs
+on the next start.
+
+### Windows-specific caveats
+
+* **One world per `gs.exe`.**  `fork()` does not exist on Windows, so the
+  multi-server startup path is compiled out (`cgame/gs/start.cpp` prints
+  *"Windows cannot fork sibling servers"*); start `gs.exe gs01`,
+  `gs.exe arena01`, … as separate processes (`START-GS.BAT <world>`).
+* **No AF_UNIX.**  `win32/winposix.cpp` maps `PF_UNIX` sockets onto
+  `AF_INET` (*"AF_UNIX unsupported"*), so the same-host inter-world channel
+  (`[MsgUNIXSession]`, `[MsgReceiverUNIX_*]` in `gs.conf`) cannot work on
+  Windows.  A single world is unaffected; several worlds on one host cannot
+  exchange messages.
+* **`/tmp/...` config entries** (`mtrace = /tmp/m_trace.link` and friends)
+  resolve to `<drive>:\tmp\...`; create that directory or comment the entries
+  out.
+* **`gs` startup probe.**  `gs` checks that its directory is writable before
+  initializing.  The original check shelled out to `/bin/touch`, which does
+  not exist under `cmd.exe`; the `WIN32` build now probes with `fopen()`
+  instead.  Binaries built *before* that fix abort immediately with
+  *"文件系统不可写…"* unless a `\bin\touch.bat` exists on the drive.
+* **Configs are GBK-encoded** — edit them with an editor that preserves bytes.
+* **Firewall.**  Open TCP 9001 for the game client, plus the 29xxx/11100-11101
+  ports if the daemons run on different hosts or players connect from the LAN.
+
+### What you still have to supply (Windows or Linux)
+
+The build produces **executables only**.  These are not in the repository and
+not in any release:
+
+| Missing piece | Where to get it |
+| --- | --- |
+| Game data: `elements.data`, `tasks.data`, `dyn_tasks.data`, `world_targets.sev`, `aipolicy.data`, `npcgen.data`, `precinct.sev`, `region.sev`, `path.sev`, `movemap/` `watermap/` `airmap/` and the per-map directories (`world/`, `b01/`, `a01/`, `a02/`, `a05/`, `a06/`, `a07/`) | A PW-152 era server data package, or extracted from a matching client.  Put it in `gs\data\`.  Without it the network daemons run but `gs` cannot start (§5). |
+| A game client | A PW-152 era client, patched to point at your `glinkd` host:port (9001).  `glinkd` only *announces* its protocol version in the login challenge (`version` is parsed as **hex**: `10204` in `gamesys.conf`, `804` in the legacy `glinkd.conf`) — the client decides whether it matches. |
+
+What you do **not** need: an account/billing (AU) server.  `gauthd`'s
+`UserLogin` handler always answers `ERR_SUCCESS` with `blIsGM=1`
+(`cnet/gauthd/userlogin.hrp`) — any account name and password logs in, as a
+GM.  Its `./dbhome` storage holds billing/session data, not credentials.
+
+---
+
 ## 1. Host prerequisites
+
+(Windows hosts: see §0b instead — the rest of this section is Linux-specific.)
+
 
 * x86_64 Linux (built on Ubuntu 24.04 runners — a similarly recent distro
   with glibc ≥ 2.35 is safest).
@@ -238,7 +396,7 @@ before starting the next.
 
 | Port | Daemon | Purpose |
 | --- | --- | --- |
-| 9001 | glinkd | **game client entry point** (`version = 804` in the conf) |
+| 9001 | glinkd | **game client entry point** (`version = 10204` hex in `gamesys.conf`; the legacy `glinkd.conf` set says `804`) |
 | 29100 | gdeliveryd | GDeliveryServer (glinkd ↔ gdeliveryd) |
 | 29200 | gauthd | auth (see §4 port alignment) |
 | 29300 | gdeliveryd | GProviderServer — gs connects here |

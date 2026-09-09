@@ -17,10 +17,11 @@
 #
 #     <runtime-dir>  where to build the tree (created; must be empty or
 #                    nonexistent unless --force is given)
-#     [binaries]     dist/ directory, a release tar.gz, or an unpacked
-#                    release directory.  Default: <repo>/dist if present,
-#                    else the newest idealworld-152-server-linux-*.tar.gz
-#                    in the current directory.
+#     [binaries]     dist/ (Linux) or dist-win/ (Windows .exe) directory, a
+#                    release tar.gz, or an unpacked release directory.
+#                    Default: <repo>/dist if present, else <repo>/dist-win,
+#                    else the newest idealworld-152-server-{linux,windows}-*
+#                    .tar.gz in the current directory.
 #
 #   --force         reuse an existing runtime dir: refresh binaries, configs
 #                   and scripts, but never touch databases (dbhome/, dbhomewdb/,
@@ -55,23 +56,25 @@ NEEDED="glinkd gdeliveryd gauthd gfactiond gamedbd uniquenamed logservice gs"
 resolve_bins() {
 	if [ -n "$BINS" ]; then
 		[ -e "$BINS" ] || die "binaries location not found: $BINS"
-		if [ -d "$BINS" ] && [ -x "$BINS/bin/gs" ]; then echo "$BINS/bin"; return 0; fi     # unpacked release dir
-		if [ -d "$BINS" ] && [ -x "$BINS/gs" ]; then echo "$BINS"; return 0; fi             # dist/bin itself
+		if [ -d "$BINS" ] && { [ -x "$BINS/bin/gs" ] || [ -x "$BINS/bin/gs.exe" ]; }; then echo "$BINS/bin"; return 0; fi   # unpacked release dir
+		if [ -d "$BINS" ] && { [ -x "$BINS/gs" ] || [ -x "$BINS/gs.exe" ]; }; then echo "$BINS"; return 0; fi               # dist/bin or dist-win/bin itself
 		if [ -d "$BINS" ]; then echo "$BINS"; return 0; fi                                  # dir of bins
 		case "$BINS" in
 			*.tar.gz|*.tgz) mkdir -p "$RT/.unpacked" && tar -xzf "$BINS" -C "$RT/.unpacked" \
 				|| die "cannot unpack $BINS"
-				local d; d="$(find "$RT/.unpacked" -name gs -type f -printf '%h\n' | head -1)"
+				local d; d="$(find "$RT/.unpacked" \( -name gs -o -name gs.exe \) -type f -printf '%h\n' | head -1)"
 				[ -n "$d" ] || die "no binaries found inside $BINS"; echo "$d"; return 0 ;;
 		esac
 		die "unsupported binaries location: $BINS (want dist/, release dir, or release .tar.gz)"
 	fi
 	if [ -x "$SRC/dist/bin/gs" ]; then echo "$SRC/dist/bin"; return 0; fi
-	local t; t="$(ls -t idealworld-152-server-linux-*.tar.gz "$SRC"/idealworld-152-server-linux-*.tar.gz 2>/dev/null | head -1)"
+	if [ -x "$SRC/dist-win/bin/gs.exe" ]; then echo "$SRC/dist-win/bin"; return 0; fi
+	local t; t="$(ls -t idealworld-152-server-linux-*.tar.gz idealworld-152-server-windows-*.tar.gz \
+		"$SRC"/idealworld-152-server-linux-*.tar.gz "$SRC"/idealworld-152-server-windows-*.tar.gz 2>/dev/null | head -1)"
 	if [ -n "$t" ]; then
 		say "using release tarball $t"
 		mkdir -p "$RT/.unpacked" && tar -xzf "$t" -C "$RT/.unpacked" || die "cannot unpack $t"
-		local d; d="$(find "$RT/.unpacked" -name gs -type f -printf '%h\n' | head -1)"
+		local d; d="$(find "$RT/.unpacked" \( -name gs -o -name gs.exe \) -type f -printf '%h\n' | head -1)"
 		[ -n "$d" ] || die "no binaries found inside $t"; echo "$d"; return 0
 	fi
 	die "no binaries found. Run ./tools/ci-build.sh first (dist/), or pass a release tarball."
@@ -87,24 +90,38 @@ BINDIR="$(resolve_bins)" || exit 1
 say "binaries: $BINDIR"
 say "configs : $SRC"
 
+# Windows builds produce <name>.exe, Linux builds <name>; accept either.
+bin_src() { # <name> -> path
+	if [ -f "$BINDIR/$1" ]; then echo "$BINDIR/$1"; return 0; fi
+	if [ -f "$BINDIR/$1.exe" ]; then echo "$BINDIR/$1.exe"; return 0; fi
+	return 1
+}
+place_bin() { # <binary-name> <runtime-subdir>
+	local src; src="$(bin_src "$1")" || die "missing binary: $BINDIR/$1 (or $1.exe)"
+	cp -f "$src" "$RT/$2/$(basename "$src")"
+}
+
 for d in gauthd gdeliveryd glinkd gfaction gamedbd uniquenamed logservice gs; do
 	mkdir -p "$RT/$d"
 done
 mkdir -p "$RT/logs" "$RT/pids"
 
 for b in $NEEDED; do
-	[ -x "$BINDIR/$b" ] || die "missing binary: $BINDIR/$b"
-	cp -f "$BINDIR/$b" "$RT/placeholder_bin_$b" 2>/dev/null && rm -f "$RT/placeholder_bin_$b" # probe writability
+	bin_src "$b" >/dev/null || die "missing binary: $BINDIR/$b (or $b.exe)"
+	src="$(bin_src "$b")"
+	cp -f "$src" "$RT/placeholder_bin_$b" 2>/dev/null && rm -f "$RT/placeholder_bin_$b" # probe writability
 done
 # place binaries (gamedbd lives in gamedbd/, gfactiond in gfaction/, ...)
-cp -f "$BINDIR/gauthd"       "$RT/gauthd/gauthd"
-cp -f "$BINDIR/gdeliveryd"   "$RT/gdeliveryd/gdeliveryd"
-cp -f "$BINDIR/glinkd"       "$RT/glinkd/glinkd"
-cp -f "$BINDIR/gfactiond"    "$RT/gfaction/gfactiond"
-cp -f "$BINDIR/gamedbd"      "$RT/gamedbd/gamedbd"
-cp -f "$BINDIR/uniquenamed"  "$RT/uniquenamed/uniquenamed"
-cp -f "$BINDIR/logservice"   "$RT/logservice/logservice"
-cp -f "$BINDIR/gs"           "$RT/gs/gs"
+# bin_src()/place_bin() keep the .exe suffix of the Windows build
+# (tools/ci-build-win.sh -> dist-win/bin) so pwctl.sh can exec them.
+place_bin gauthd       gauthd
+place_bin gdeliveryd   gdeliveryd
+place_bin glinkd       glinkd
+place_bin gfactiond    gfaction
+place_bin gamedbd      gamedbd
+place_bin uniquenamed  uniquenamed
+place_bin logservice   logservice
+place_bin gs           gs
 chmod +x "$RT"/*/* 2>/dev/null
 say "binaries installed (8 daemons)"
 
@@ -319,5 +336,5 @@ next steps:
   1. drop the game data package into $RT/gs/data/   (skip if already there)
   2. start everything:   cd $RT && ./pwctl.sh
   3. watch it come up:   ./pwctl.sh status ; ./pwctl.sh logs gdeliveryd
-  4. clients connect to  glinkd  (port 9001, version 804 in the conf)
+  4. clients connect to  glinkd  (port 9001; version = 10204 hex in glinkd/gamesys.conf)
 EOF

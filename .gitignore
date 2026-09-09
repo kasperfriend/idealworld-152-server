@@ -14,6 +14,10 @@
 *.la
 *.gch
 .depend
+# Windows cross-build (tools/ci-build-win.sh) drops MSVC-style companions
+# next to the archives/executables it produces.
+*.lib
+*.pdb
 
 # daemons and tools land in their own source directory
 cnet/glinkd/glinkd

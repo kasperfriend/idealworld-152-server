@@ -62,6 +62,8 @@ jobs:
           msystem: MINGW64
           install: >-
             make
+            zip
+            unzip
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-pcre
@@ -88,6 +90,32 @@ jobs:
       - name: Strip binaries
         if: ${{ inputs.strip_binaries }}
         run: strip dist-win/bin/*.exe
+
+      # Assembles the "unpack and double-click" archive: the 8 .exe files in
+      # the per-daemon runtime layout (tools/setup-runtime.sh), the patched
+      # configs, the mingw runtime DLLs the binaries import, START-ALL.BAT /
+      # START-GS.BAT / STOP-ALL.BAT / STATUS.BAT and the plain-text guides.
+      - name: Package one-click runtime zip
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          ZIP="release/idealworld-152-server-windows-oneclick.zip"
+          ./tools/package-win.sh dist-win "$ZIP"
+          # publish the short guide next to the archive as its own asset, so
+          # it can be read without unpacking anything
+          sed -e 's/\r$//' -e 's/$/\r/' tools/winpkg/HOWTO-PLAY.txt > release/HOWTO-PLAY.TXT
+          echo
+          unzip -l "$ZIP" | awk 'NR<=4 || /\.dll$|\.BAT$|\.TXT$/'
+          dlls="$(unzip -l "$ZIP" | grep -c '\.dll$' || true)"
+          if [ "${dlls:-0}" -eq 0 ]; then
+            echo 'no runtime DLLs were packaged - the .exe files would not start'
+            exit 1
+          fi
+          unzip -l "$ZIP" | grep -q 'libwinpthread-1.dll' \
+            || echo '::warning::libwinpthread-1.dll was not packaged'
+          for f in START-ALL.BAT HOWTO-PLAY.TXT README-FIRST.TXT; do
+            unzip -l "$ZIP" | grep -q "$f" || { echo "$f is missing from the archive"; exit 1; }
+          done
 
       - name: Package
         run: |
@@ -116,9 +144,19 @@ jobs:
             echo
             echo "| archive | size |"
             echo "| --- | --- |"
-            for f in release/*.tar.gz; do
+            for f in release/*.tar.gz release/*.zip; do
               echo "| \`$(basename \"$f\")\` | $(du -h \"$f\" | cut -f1) |"
             done
+            echo
+            echo "**\`…-windows-oneclick.zip\`** is the unpack-and-run archive: the 8"
+            echo "daemons in their runtime layout with patched configs, the mingw"
+            echo "runtime DLLs, \`START-ALL.BAT\` / \`START-GS.BAT\` / \`STOP-ALL.BAT\` /"
+            echo "\`STATUS.BAT\`, \`HOWTO-PLAY.TXT\` and \`README-FIRST.TXT\`."
+            echo
+            echo "It still needs the PW 1.5.2 game data package (into \`gs\\data\\\`)"
+            echo "and a matching game client - neither is part of this repository."
+            echo "\`HOWTO-PLAY.TXT\` is attached to this release separately; it says"
+            echo "what to add and where, what to run, and how to get in game."
             echo
             echo '```'
             cat "$PKG"/MANIFEST.txt
@@ -224,6 +262,7 @@ jobs:
           body_path: release/RELEASE_NOTES.md
           files: |
             release/*.tar.gz
+            release/*.zip
             release/*.txt
             release/RUNBOOK.md
             release/glinkd.exe
